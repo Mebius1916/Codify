@@ -5,5 +5,5 @@ interface EnvConfig {
 }
 
 export const env: EnvConfig = {
-  port: Number(process.env.PORT ?? '3001'),
+  port: Number(process.env.PORT),
 }

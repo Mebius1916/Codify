@@ -43,6 +43,8 @@ export function WorkspaceSettingsModal({
     setApiEndpoint,
     apiKey,
     setApiKey,
+    modelNameDraft,
+    setModelNameDraft,
     aiEnhanceDraft,
     setAiEnhanceDraft,
     figmaTokenDraft,
@@ -168,6 +170,16 @@ export function WorkspaceSettingsModal({
                 {modelApiEndpointInvalid && (
                   <div className="text-[11px] leading-[16px] text-red-400">Model API Endpoint 是必填项</div>
                 )}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label>Model</Label>
+                <Input
+                  value={modelNameDraft}
+                  onChange={(e) => setModelNameDraft(e.target.value)}
+                  placeholder="gpt-4o"
+                  autoComplete="off"
+                />
               </div>
 
               <div className="flex flex-col gap-1.5">

@@ -6,9 +6,9 @@ export interface ConvertFigmaDto {
   algorithmOptions?: Partial<AlgorithmOptions>
   aiEnhance?: boolean
   aiOptions?: {
-    model?: string
     apiKey: string
-    baseUrl?: string
+    baseUrl: string
+    model?: string
     temperature?: number
     targetSimilarity?: number
   }

@@ -18,12 +18,14 @@ export function useFigmaUrlParser() {
     aiEnhance,
     modelApiEndpoint,
     modelApiKey,
+    modelName,
   } = useUiStore((s) => ({
     figmaToken: s.figmaToken,
     algorithmOptions: s.algorithmOptions,
     aiEnhance: s.aiEnhance,
     modelApiEndpoint: s.modelApiEndpoint,
     modelApiKey: s.modelApiKey,
+    modelName: s.modelName,
   }));
 
   const parse = async (inputUrl: string, algorithmOptions?: Partial<AlgorithmOptions>) => {
@@ -50,6 +52,7 @@ export function useFigmaUrlParser() {
           ? {
               baseUrl: modelApiEndpoint.trim(),
               apiKey: modelApiKey.trim(),
+              model: modelName.trim(),
             }
           : undefined,
       });

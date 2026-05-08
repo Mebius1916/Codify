@@ -18,22 +18,26 @@ export function useWorkspaceSettingsModalState({
   const {
     modelApiEndpoint,
     modelApiKey,
+    modelName,
     aiEnhance,
     figmaToken,
     algorithmOptions,
     setModelApiEndpoint,
     setModelApiKey,
+    setModelName,
     setAiEnhance,
     setFigmaToken,
     setAlgorithmOptions,
   } = useUiStore((state) => ({
     modelApiEndpoint: state.modelApiEndpoint,
     modelApiKey: state.modelApiKey,
+    modelName: state.modelName,
     aiEnhance: state.aiEnhance,
     figmaToken: state.figmaToken,
     algorithmOptions: state.algorithmOptions,
     setModelApiEndpoint: state.setModelApiEndpoint,
     setModelApiKey: state.setModelApiKey,
+    setModelName: state.setModelName,
     setAiEnhance: state.setAiEnhance,
     setFigmaToken: state.setFigmaToken,
     setAlgorithmOptions: state.setAlgorithmOptions,
@@ -43,6 +47,7 @@ export function useWorkspaceSettingsModalState({
   const [stylingSystem, setStylingSystem] = useState('CSS')
   const [apiEndpoint, setApiEndpoint] = useState(modelApiEndpoint)
   const [apiKey, setApiKey] = useState(modelApiKey)
+  const [modelNameDraft, setModelNameDraft] = useState(modelName)
   const [aiEnhanceDraft, setAiEnhanceDraft] = useState(aiEnhance)
   const [figmaTokenDraft, setFigmaTokenDraft] = useState(figmaToken)
 
@@ -64,6 +69,7 @@ export function useWorkspaceSettingsModalState({
 
     setApiEndpoint(modelApiEndpoint)
     setApiKey(modelApiKey)
+    setModelNameDraft(modelName)
     setAiEnhanceDraft(aiEnhance)
     setFigmaTokenDraft(figmaToken)
 
@@ -103,12 +109,14 @@ export function useWorkspaceSettingsModalState({
     highlightModelApiConfig,
     modelApiEndpoint,
     modelApiKey,
+    modelName,
     open,
   ])
 
   const handleSave = () => {
     setModelApiEndpoint(apiEndpoint)
     setModelApiKey(apiKey)
+    setModelName(modelNameDraft)
     setAiEnhance(aiEnhanceDraft)
     setFigmaToken(figmaTokenDraft)
     setAlgorithmOptions(algorithmOptionsEnabled ? (algorithmOptionsDraft as unknown as Record<string, unknown>) : {})
@@ -129,6 +137,8 @@ export function useWorkspaceSettingsModalState({
     setApiEndpoint,
     apiKey,
     setApiKey,
+    modelNameDraft,
+    setModelNameDraft,
 
     aiEnhanceDraft,
     setAiEnhanceDraft,

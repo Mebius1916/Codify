@@ -40,7 +40,7 @@ export class FigmaAiEnhanceService {
         html: currentHtml,
         model: input.dto.aiOptions.model?.trim() || 'gpt-4o',
         apiKey: input.dto.aiOptions.apiKey.trim(),
-        baseUrl: input.dto.aiOptions.baseUrl?.trim() || '',
+        baseUrl: input.dto.aiOptions.baseUrl.trim(),
         temperature: input.dto.aiOptions.temperature ?? 0,
         threshold: 0.1,
         renderEndpoint: `http://localhost:${env.port}/api/render/html`,

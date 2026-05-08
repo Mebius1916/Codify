@@ -7,9 +7,9 @@ interface ConvertFigmaOptions {
   algorithmOptions?: Partial<AlgorithmOptions>
   aiEnhance?: boolean
   aiOptions?: {
-    model?: string
+    model: string
     apiKey: string
-    baseUrl?: string
+    baseUrl: string
   }
 }
 
@@ -29,7 +29,7 @@ export async function convertFigma({
       token,
       algorithmOptions,
       aiEnhance,
-      aiOptions,
+      aiOptions: aiEnhance ? aiOptions : undefined,
     }),
   })
 
