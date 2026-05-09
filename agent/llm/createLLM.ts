@@ -5,6 +5,7 @@ export interface CreateLLMParams {
   apiKey: string;
   baseUrl: string;
   temperature: number;
+  timeout?: number;
 }
 
 export function createLLM(params: CreateLLMParams) {
@@ -13,5 +14,6 @@ export function createLLM(params: CreateLLMParams) {
     model: params.model,
     configuration: { baseURL: params.baseUrl },
     temperature: params.temperature,
+    timeout: params.timeout,
   });
 }

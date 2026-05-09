@@ -9,6 +9,7 @@ import { exportHtmlCss } from "../steps/exportHtmlCss.js";
 import { observeVisualDiff } from "../steps/observeVisualDiff.js";
 import { executeRepairAction } from "./actionExecutor.js";
 import { decideNextAction, type RepairAction } from "./decideNextAction.js";
+import { logAgentEvent } from "./utils/logger.js";
 
 export interface VisualRepairContext {
   input: RunVisualRepairParams;
@@ -31,6 +32,11 @@ export async function runVisualRepairLoop(
   llm: ChatOpenAI,
   params: RunVisualRepairParams
 ): Promise<HtmlCssResult> {
+  logAgentEvent("loop:start", {
+    diffRatio: params.diffRatio,
+    targetSimilarity: params.visualRegression.targetSimilarity,
+  });
+
   // 维护本轮修复过程中逐步产出的中间结果；事实源唯一，messages 由 toLLMMessages 派生。
   const context: VisualRepairContext = {
     input: params,
@@ -52,9 +58,18 @@ export async function runVisualRepairLoop(
 
   // 基于当前上下文先决定第一次动作，后续每轮执行完再重新判断。
   let nextAction: RepairAction = decideNextAction(context);
+  logAgentEvent("loop:next-action", {
+    round: context.round,
+    type: nextAction.type,
+    reason: nextAction.reason,
+  });
 
   while (context.round <= MAX_ACTION_ROUNDS) {
     if (nextAction.type === "finish") {
+      logAgentEvent("loop:finish", {
+        round: context.round,
+        reason: nextAction.reason,
+      });
       return exportHtmlCss(llm, { currentHtml: context.currentHtml });
     }
 
@@ -64,8 +79,15 @@ export async function runVisualRepairLoop(
     // 一轮动作完成后，再根据最新上下文进入下一次决策。
     context.round += 1;
     nextAction = decideNextAction(context);
+    logAgentEvent("loop:next-action", {
+      round: context.round,
+      type: nextAction.type,
+      reason: nextAction.reason,
+      diffRatio: context.diffRatio,
+    });
   }
 
   // 超过最大轮次后停止自动修复，返回当前轮次产出的结果。
+  logAgentEvent("loop:max-rounds-reached", { round: context.round });
   return exportHtmlCss(llm, { currentHtml: context.currentHtml });
 }

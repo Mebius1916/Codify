@@ -11,6 +11,7 @@ import {
 import { reviewHtmlSystemPrompt } from "../prompts/review.js";
 import type { VisualRepairContext } from "../runtime/loop.js";
 import { toLLMMessages } from "../runtime/utils/llmContext.js";
+import { logAgentEvent } from "../runtime/utils/logger.js";
 import { sanitizers } from "../sanitizers/index.js";
 
 export interface ReviewHtmlInput {
@@ -58,9 +59,18 @@ export async function reviewHtml(
   );
 
   // 由 context 现场投影出消息序列（system + 视觉槽 + 裁剪后的 history），再追加本步指令。
+  logAgentEvent("review:project-messages:start", { round: input.context.round });
   const projected = await toLLMMessages(input.context, llm);
+  logAgentEvent("review:llm:start", {
+    round: input.context.round,
+    messages: projected.length + 1,
+  });
   const rawResult = await structuredLlm.invoke([...projected, instruction]);
   const result = sanitizers.review(rawResult);
+  logAgentEvent("review:llm:done", {
+    round: input.context.round,
+    status: result.status,
+  });
 
   // 把本步的 Human 指令 + AI 的 review 结果 append 回去，下一轮 plan/rewrite 就能从上文看到"上一轮 review 为什么不过"。
   const appendedMessages: BaseMessage[] = [

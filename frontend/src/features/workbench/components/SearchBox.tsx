@@ -9,6 +9,7 @@ export function SearchBox() {
   const { state, parse, clearError } = useFigmaUrlParser();
   const [url, setUrl] = useState('');
   const isLoading = state.status === 'loading';
+  const logs = state.status === 'loading' ? state.logs.slice(-4) : [];
   const error = state.status === 'error' ? state.error : null;
 
   const handleConvert = async () => {
@@ -57,6 +58,17 @@ export function SearchBox() {
           </button>
         </div>
       </div>
+      {logs.length > 0 && (
+        <div className="mt-2 max-h-28 overflow-hidden rounded-md border border-[#2a2f4c] bg-[#191e32] px-3 py-2 font-mono text-xs text-slate-300">
+          {logs.map((log, index) => (
+            <div key={`${log.timestamp}-${log.event}-${index}`} className="truncate">
+              <span className="text-slate-500">{new Date(log.timestamp).toLocaleTimeString()}</span>
+              <span className="mx-2 text-blue-400">{log.event}</span>
+              <span>{log.message ?? (log.details ? JSON.stringify(log.details) : '')}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

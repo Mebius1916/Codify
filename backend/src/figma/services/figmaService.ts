@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
+import type { AgentLogEntry } from '@codify/agent'
 import type { ConvertFigmaDto } from '../dto/convertFigmaDto.ts'
 import { FigmaAiEnhanceService } from './figmaAiEnhanceService.ts'
 import { FigmaApiClient } from './figmaApiClient.ts'
@@ -17,13 +18,13 @@ export class FigmaService {
     private readonly figmaAiEnhanceService: FigmaAiEnhanceService,
   ) {}
 
-  convert(input: ConvertFigmaDto) {
-    const task = this.convertQueue.then(() => this.runConvert(input))
+  convert(input: ConvertFigmaDto, options?: { onAgentLog?: (entry: AgentLogEntry) => void }) {
+    const task = this.convertQueue.then(() => this.runConvert(input, options))
     this.convertQueue = task.then(() => undefined, () => undefined)
     return task
   }
 
-  private async runConvert(input: ConvertFigmaDto) {
+  private async runConvert(input: ConvertFigmaDto, options?: { onAgentLog?: (entry: AgentLogEntry) => void }) {
     if (!input.figmaUrl?.trim()) throw new BadRequestException('请输入 figma url')
     if (!input.token?.trim()) throw new BadRequestException('请先填写 Figma Token')
 
@@ -45,6 +46,7 @@ export class FigmaService {
       nodeRef,
       token,
       codegenResult,
+      onAgentLog: options?.onAgentLog,
     })
 
     return {

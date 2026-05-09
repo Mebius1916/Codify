@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useUiStore } from '@/features/workspace/store/uiStore';
-import { convertFigma } from '../services/figma';
+import { convertFigma, type ConvertFigmaLogEntry } from '../services/figma';
 import type { FigmaConvertResult } from '../interfaces/model';
 
 type FigmaUrlParserState =
   | { status: 'idle' }
-  | { status: 'loading' }
+  | { status: 'loading'; logs: ConvertFigmaLogEntry[] }
   | { status: 'success'; data: FigmaConvertResult }
   | { status: 'error'; error: string };
 
@@ -37,7 +37,7 @@ export function useFigmaUrlParser() {
       return null;
     }
 
-    setState({ status: 'loading' });
+    setState({ status: 'loading', logs: [] });
 
     try {
       const result = await convertFigma({
@@ -49,8 +49,14 @@ export function useFigmaUrlParser() {
               baseUrl: modelApiEndpoint.trim(),
               apiKey: modelApiKey.trim(),
               model: modelName.trim(),
-            }
-          : undefined,
+	            }
+	          : undefined,
+        onLog: (entry) => {
+          setState((prev) => {
+            if (prev.status !== 'loading') return prev
+            return { status: 'loading', logs: [...prev.logs, entry].slice(-20) }
+          })
+        },
       });
       setState({ status: 'success', data: result });
       return result;

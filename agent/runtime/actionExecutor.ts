@@ -5,6 +5,7 @@ import { rewriteHtml } from "../steps/rewriteHtml.js";
 import type { RepairAction } from "./decideNextAction.js";
 import type { VisualRepairContext } from "./loop.js";
 import { resolveExecutableAction } from "./utils/actionHelpers.js";
+import { logAgentError, logAgentEvent } from "./utils/logger.js";
 import { refreshVisualRegression } from "./utils/visualRegression.js";
 
 function formatRuntimeError(error: unknown): string {
@@ -20,6 +21,11 @@ export async function executeRepairAction(
   action: RepairAction
 ): Promise<RepairAction> {
   const executableAction = resolveExecutableAction(context, action);
+  logAgentEvent("action:start", {
+    round: context.round,
+    requested: action.type,
+    executable: executableAction.type,
+  });
 
   switch (executableAction.type) {
     case "plan": {
@@ -32,6 +38,11 @@ export async function executeRepairAction(
       context.repairPatches = patches;
       // 清掉旧 review
       context.reviewResult = undefined;
+      logAgentEvent("action:done", {
+        round: context.round,
+        type: executableAction.type,
+        patches: patches.length,
+      });
       return executableAction;
     }
 
@@ -56,11 +67,18 @@ export async function executeRepairAction(
 
       // 每轮 rewrite 后闭环视觉回归；新截图等会被 toLLMMessages 在下一次调用时自然投影出去。
       try {
+        logAgentEvent("visual-regression:start", { round: context.round });
         await refreshVisualRegression(context);
         context.visualRegressionError = undefined;
+        logAgentEvent("visual-regression:done", {
+          round: context.round,
+          diffRatio: context.diffRatio,
+          similarity: 1 - context.diffRatio,
+        });
       } catch (error) {
         // 渲染失败时不影响 rewrite 本身；下一轮仍可基于代码层 review 继续推进。
         context.visualRegressionError = formatRuntimeError(error);
+        logAgentError("visual-regression:failed", error);
       }
 
       // 对改写结果做代码层 + 视觉层综合自检，为下一步动作选择提供依据。
@@ -71,11 +89,20 @@ export async function executeRepairAction(
       });
       context.history.push(...appendedMessages);
       context.reviewResult = result;
+      logAgentEvent("action:done", {
+        round: context.round,
+        type: executableAction.type,
+        reviewStatus: result.status,
+      });
       return executableAction;
     }
 
     case "finish":
       context.lastAction = "finish";
+      logAgentEvent("action:done", {
+        round: context.round,
+        type: executableAction.type,
+      });
       return executableAction;
   }
 }

@@ -1,10 +1,13 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
-import { visualDiff } from '@codify/agent'
+import { visualDiff, type AgentLogEntry } from '@codify/agent'
 import { env } from '../../config/env.ts'
 import { RenderService } from '../../render/renderService.ts'
 import type { ConvertFigmaDto } from '../dto/convertFigmaDto.ts'
 import { FigmaApiClient } from './figmaApiClient.ts'
 import type { AiEnhanceResult, CodegenResult, FigmaNodeRef } from '../types/figmaTypes.ts'
+
+const FIGMA_AI_ENHANCE_REQUEST_TIMEOUT_MS = 3 * 60_000
+const FIGMA_AI_ENHANCE_TIMEOUT_MS = 10 * 60_000
 
 @Injectable()
 export class FigmaAiEnhanceService {
@@ -18,6 +21,7 @@ export class FigmaAiEnhanceService {
     nodeRef: FigmaNodeRef
     token: string
     codegenResult: CodegenResult
+    onAgentLog?: (entry: AgentLogEntry) => void
   }): Promise<AiEnhanceResult> {
     try {
       if (!input.dto.aiOptions?.apiKey?.trim()) throw new BadRequestException('AI enhance 缺少 apiKey')
@@ -34,20 +38,26 @@ export class FigmaAiEnhanceService {
         deviceScaleFactor: 1,
       })
 
-      const result = await visualDiff({
-        baselinePngBase64,
-        currentPngBase64: buffer.toString('base64'),
-        html: currentHtml,
-        model: input.dto.aiOptions.model?.trim() || 'gpt-4o',
-        apiKey: input.dto.aiOptions.apiKey.trim(),
-        baseUrl: input.dto.aiOptions.baseUrl.trim(),
-        temperature: input.dto.aiOptions.temperature ?? 0,
-        threshold: 0.1,
-        renderEndpoint: env.renderEndpoint,
-        targetSimilarity: 0.9,
-        viewportWidth: viewport.width,
-        viewportHeight: viewport.height,
-      })
+      const result = await this.withTimeout(
+        visualDiff({
+          baselinePngBase64,
+          currentPngBase64: buffer.toString('base64'),
+          html: currentHtml,
+          model: input.dto.aiOptions.model?.trim() || 'gpt-4o',
+          apiKey: input.dto.aiOptions.apiKey.trim(),
+          baseUrl: input.dto.aiOptions.baseUrl.trim(),
+          temperature: input.dto.aiOptions.temperature ?? 0,
+          requestTimeoutMs: FIGMA_AI_ENHANCE_REQUEST_TIMEOUT_MS,
+          threshold: 0.1,
+          renderEndpoint: env.renderEndpoint,
+          targetSimilarity: 0.9,
+          viewportWidth: viewport.width,
+          viewportHeight: viewport.height,
+          onLog: input.onAgentLog,
+        }),
+        FIGMA_AI_ENHANCE_TIMEOUT_MS,
+        'AI enhance 超时，请检查模型接口是否可用或稍后重试',
+      )
 
       return {
         result,
@@ -77,6 +87,22 @@ export class FigmaAiEnhanceService {
     const height = result.size?.height
     if (width && height) return { width, height }
     return { width: 1280, height: 800 }
+  }
+
+  private withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs)
+      promise.then(
+        (value) => {
+          clearTimeout(timeoutId)
+          resolve(value)
+        },
+        (error: unknown) => {
+          clearTimeout(timeoutId)
+          reject(error)
+        },
+      )
+    })
   }
 
   private formatError(error: unknown): string {

@@ -10,6 +10,7 @@ import {
   exportHtmlCssSystemPrompt,
   type ExportHtmlCssPromptInput,
 } from "../prompts/export.js";
+import { logAgentError, logAgentEvent } from "../runtime/utils/logger.js";
 import { sanitizeHtmlCssResult } from "../sanitizers/sanitizeHtmlCssResult.js";
 
 const MAX_EXPORT_ATTEMPTS = 2;
@@ -41,6 +42,7 @@ export async function exportHtmlCss(
 
   let lastError: unknown;
   for (let attempt = 1; attempt <= MAX_EXPORT_ATTEMPTS; attempt += 1) {
+    logAgentEvent("export:llm:start", { attempt });
     const retryInstruction =
       attempt === 1
         ? []
@@ -65,10 +67,17 @@ export async function exportHtmlCss(
         user,
         ...retryInstruction,
       ]);
-      return sanitizeHtmlCssResult(result, {
+      const sanitized = sanitizeHtmlCssResult(result, {
         previousHtml: input.currentHtml,
       });
+      logAgentEvent("export:llm:done", {
+        attempt,
+        htmlLength: sanitized.html.length,
+        cssLength: sanitized.css.length,
+      });
+      return sanitized;
     } catch (error) {
+      logAgentError("export:llm:failed", error);
       lastError = error;
     }
   }

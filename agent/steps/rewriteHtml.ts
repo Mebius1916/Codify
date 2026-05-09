@@ -12,6 +12,7 @@ import {
 import { rewriteHtmlSystemPrompt } from "../prompts/rewrite.js";
 import type { VisualRepairContext } from "../runtime/loop.js";
 import { toLLMMessages } from "../runtime/utils/llmContext.js";
+import { logAgentEvent } from "../runtime/utils/logger.js";
 import { sanitizers } from "../sanitizers/index.js";
 
 export interface RewriteHtmlInput {
@@ -58,10 +59,23 @@ export async function rewriteHtml(
   );
 
   // 由 context 现场投影出消息序列（system + 视觉槽 + 裁剪后的 history），再追加本步指令。
+  logAgentEvent("rewrite:project-messages:start", {
+    round: input.context.round,
+    rewriteRounds: input.context.rewriteRounds,
+  });
   const projected = await toLLMMessages(input.context, llm);
+  logAgentEvent("rewrite:llm:start", {
+    round: input.context.round,
+    rewriteRounds: input.context.rewriteRounds,
+    messages: projected.length + 1,
+  });
   const rawResult = await structuredLlm.invoke([...projected, instruction]);
   const result = sanitizers.rewrite(rawResult, {
     previousHtml: input.currentHtml,
+  });
+  logAgentEvent("rewrite:llm:done", {
+    round: input.context.round,
+    htmlLength: result.html.length,
   });
 
   // AI 侧 append 的内容只放 html 字段本身

@@ -18,6 +18,7 @@ export function HomePage() {
   const { state, parse, clearError } = useFigmaUrlParser();
   const [url, setUrl] = useState('');
   const isLoading = state.status === "loading";
+  const logs = state.status === "loading" ? state.logs.slice(-6) : [];
   const error = state.status === "error" ? state.error : null;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { figmaToken, aiEnhance, modelApiEndpoint, modelApiKey } = useUiStore((s) => ({
@@ -127,6 +128,17 @@ export function HomePage() {
               {isLoading ? "Converting..." : "Convert to Code"}
             </button>
           </div>
+          {logs.length > 0 && (
+            <div className="mt-3 max-h-40 overflow-hidden rounded-lg border border-[#2A2F4C] bg-[#15182A]/80 px-3 py-2 text-left font-mono text-xs text-slate-300">
+              {logs.map((log, index) => (
+                <div key={`${log.timestamp}-${log.event}-${index}`} className="truncate">
+                  <span className="text-slate-500">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                  <span className="mx-2 text-[#1337EC]">{log.event}</span>
+                  <span>{log.message ?? (log.details ? JSON.stringify(log.details) : '')}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="mt-10 flex flex-col items-center gap-4">
