@@ -1,16 +1,12 @@
 import { PNG } from "pngjs";
 import { createLLM } from "./llm/createLLM.js";
-import { logAgentEvent, withAgentLogSink } from "./runtime/utils/logger.js";
 import { diffPng } from "./utils/diffPng.js";
 import type {
-  AgentLogEntry,
   RunVisualRepairParams,
   VisualDiffParams,
   VisualRegressionConfig,
 } from "./interfaces/runtime.js";
 import { runVisualRepairLoop } from "./runtime/loop.js";
-
-export type { AgentLogEntry };
 
 // 从 PNG base64 中解析出真实的宽高，避免调用方手动传入导致与 baseline 尺寸错位
 function readPngSize(base64: string): { width: number; height: number } {
@@ -19,10 +15,6 @@ function readPngSize(base64: string): { width: number; height: number } {
 }
 
 export function visualDiff(params: VisualDiffParams) {
-  return withAgentLogSink(params.onLog, async () => runVisualDiff(params));
-}
-
-async function runVisualDiff(params: VisualDiffParams) {
   const {
     baselinePngBase64,
     currentPngBase64,
@@ -31,8 +23,6 @@ async function runVisualDiff(params: VisualDiffParams) {
     apiKey,
     baseUrl,
     temperature,
-    requestTimeoutMs,
-    onLog: _onLog,
     threshold,
     renderEndpoint,
     targetSimilarity,
@@ -40,20 +30,7 @@ async function runVisualDiff(params: VisualDiffParams) {
     viewportHeight,
   } = params;
 
-  logAgentEvent("visualDiff:start", {
-    model,
-    baseUrl,
-    threshold,
-    targetSimilarity,
-    viewportWidth,
-    viewportHeight,
-  });
-
   const diff = diffPng(baselinePngBase64, currentPngBase64, threshold);
-  logAgentEvent("visualDiff:initial-diff", {
-    diffRatio: diff.diffRatio,
-    similarity: 1 - diff.diffRatio,
-  });
 
   // 视口默认对齐到 baseline 真实尺寸，保证 rewrite 后重新渲染出来的截图也能与 baseline 做像素级 diff
   const baselineSize = readPngSize(baselinePngBase64);
@@ -83,7 +60,6 @@ async function runVisualDiff(params: VisualDiffParams) {
     apiKey,
     baseUrl,
     temperature,
-    timeout: requestTimeoutMs,
   });
 
   return runVisualRepairLoop(llm, runParams);

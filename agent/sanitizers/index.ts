@@ -1,10 +1,8 @@
 import type { ObserveResult } from "../interfaces/observeResult.js";
 import type { RepairPatch } from "../interfaces/repairPatch.js";
-import type { ReviewResult } from "../interfaces/reviewResult.js";
 import type { RewriteResult } from "../interfaces/rewriteResult.js";
 import { sanitizeObserveResult } from "./sanitizeObserveResult.js";
 import { sanitizeRepairPatches } from "./sanitizeRepairPatches.js";
-import { sanitizeReviewResult } from "./sanitizeReviewResult.js";
 import { sanitizeRewriteResult } from "./sanitizeRewriteResult.js";
 
 interface SanitizerContext {
@@ -18,9 +16,6 @@ export const sanitizers = {
 
   plan: (payload: RepairPatch[], context: SanitizerContext) =>
     sanitizeRepairPatches(payload, context),
-
-  review: (payload: ReviewResult) => 
-    sanitizeReviewResult(payload),
 
   rewrite: (payload: RewriteResult, context: SanitizerContext) =>
     sanitizeRewriteResult(payload, context),

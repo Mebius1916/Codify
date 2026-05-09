@@ -8,7 +8,7 @@ export const planVisualRepairSystemPrompt = [
   "- 输出面向后续 rewrite 的结构化修复计划，而不是程序可执行 patch",
   "- dataId 必须来自原始 HTML 中已有的 data-id",
   "- change 要具体描述应该如何调整该节点，可包含 class、布局、间距、颜色、尺寸等建议",
-  "- reason 要说明为什么需要这次调整，便于后续 rewrite 和 review 理解",
+  "- reason 要说明为什么需要这次调整，便于后续 rewrite 理解",
   "- 不要泛泛地输出“调整布局”，每条计划都必须锚定到具体 dataId",
   "- 如果无法安全给出建议，应返回空结果，不要猜测",
 ].join("\n");

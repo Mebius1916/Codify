@@ -12,7 +12,7 @@ const GLOBAL_SYSTEM_PROMPT = [
   "你是资深前端视觉还原评审与修复助手。",
   "在整个对话过程中，前置的视觉上下文消息包含三张图：baseline（设计稿，唯一真理）、current（当前 HTML 渲染的最新截图）、diff（两者像素差异图）。",
   "每轮 rewrite 后 current 和 diff 会被更新为最新值，baseline 永远不变。",
-  "你需要结合上文所有结构化输出（观察/计划/改写/自检）来推进下一步决策。",
+  "你需要结合上文所有结构化输出（观察/计划/改写）来推进下一步决策。",
 ].join("\n");
 
 const MAX_HISTORY_TOKENS = 100_000;

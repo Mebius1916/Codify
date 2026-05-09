@@ -84,10 +84,12 @@ export function FileTreePanel({ actions, showHeader }: FileTreePanelProps) {
           <button
             type="button"
             className="w-full px-3 py-2 bg-[#1A1E32] rounded outline outline-1 outline-[#2A2F4C] -outline-offset-1 inline-flex items-center justify-center gap-2"
-            onClick={() => {
-              const { files, fileKeys } = useEditorStore.getState()
-              downloadAllFilesAsZip({ files, fileKeys, zipName: 'project.zip' })
-            }}
+	            onClick={() => {
+	              const { files, fileKeys } = useEditorStore.getState()
+	              void downloadAllFilesAsZip({ files, fileKeys, zipName: 'project.zip' }).catch((error: unknown) => {
+	                console.error(error)
+	              })
+	            }}
           >
             <div className="flex flex-col items-center">
               <img src={downloadIconUrl} alt="" className="w-[8.15px] h-[9.93px]" />

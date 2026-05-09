@@ -6,14 +6,6 @@ export interface VisualRegressionConfig {
   diffThreshold: number;
 }
 
-export interface AgentLogEntry {
-  timestamp: string;
-  level: "info" | "error";
-  event: string;
-  details?: Record<string, unknown>;
-  message?: string;
-}
-
 export interface RunVisualRepairParams {
   baselinePngBase64: string;
   currentPngBase64: string;
@@ -35,8 +27,6 @@ export interface VisualDiffParams {
   apiKey: string;
   baseUrl: string;
   temperature: number;
-  requestTimeoutMs?: number;
-  onLog?: (entry: AgentLogEntry) => void;
   threshold: number;
   renderEndpoint?: string;
   targetSimilarity?: number;
