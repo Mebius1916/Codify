@@ -64,6 +64,8 @@ export function WorkspaceSettingsModal({
     highlightFigmaToken,
     highlightModelApiConfig,
   });
+  const modelApiDisabled = !aiEnhanceDraft;
+  const modelApiDisabledClass = modelApiDisabled ? 'opacity-50' : '';
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? null : onClose())}>
@@ -146,65 +148,7 @@ export function WorkspaceSettingsModal({
             <div className="text-[#E5E7EB] text-sm leading-5 font-medium uppercase tracking-[0.07em] font-['Inter']">
               Model API Configuration
             </div>
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Label>Model API Endpoint URL</Label>
-                <div className="relative">
-                  <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#9CA3AF]" />
-                  <Input
-                    ref={modelApiEndpointInputRef}
-                    value={apiEndpoint}
-                    onChange={(e) => setApiEndpoint(e.target.value)}
-                    placeholder="https://your-llm-api.example/v1"
-                    autoComplete="off"
-                    onBlur={() => setModelApiEndpointTouched(true)}
-                    aria-invalid={modelApiEndpointInvalid}
-                    className={`pl-9 ${modelApiEndpointInvalid ? 'border-red-500/70 focus-visible:ring-red-500/40' : ''}`}
-                  />
-                </div>
-                {modelApiEndpointInvalid && (
-                  <div className="text-[11px] leading-[16px] text-red-400">Model API Endpoint 是必填项</div>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label>Model</Label>
-                <Input
-                  value={modelNameDraft}
-                  onChange={(e) => setModelNameDraft(e.target.value)}
-                  placeholder="gpt-4o"
-                  autoComplete="off"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label>Model API Key</Label>
-                <div className="relative">
-                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#9CA3AF]" />
-                  <Input
-                    type="text"
-                    ref={modelApiKeyInputRef}
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    autoComplete="off"
-                    style={maskedTextStyle}
-                    onBlur={() => setModelApiKeyTouched(true)}
-                    aria-invalid={modelApiKeyInvalid}
-                    className={`pl-9 ${modelApiKeyInvalid ? 'border-red-500/70 focus-visible:ring-red-500/40' : ''}`}
-                  />
-                </div>
-                {modelApiKeyInvalid && (
-                  <div className="text-[11px] leading-[16px] text-red-400">Model API Key 是必填项</div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-[#2A2F4C] flex flex-col gap-4">
-            <div className="text-[#E5E7EB] text-sm leading-5 font-medium uppercase tracking-[0.07em] font-['Inter']">
-              AI Features
-            </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between rounded-lg border border-[#2A2F4C] bg-[#15182A]/60 px-3 py-2">
               <div className="flex items-center gap-2">
                 <div className="text-[#D1D5DB] text-sm leading-5 font-medium font-['Inter']">AI Enhance</div>
                 <div className="px-1.5 py-0.5 rounded bg-gradient-to-r from-[#9333EA] to-[#4F46E5] shadow-sm text-white text-[10px] leading-[15px] font-bold font-['Inter']">
@@ -213,8 +157,65 @@ export function WorkspaceSettingsModal({
               </div>
               <Switch checked={aiEnhanceDraft} onCheckedChange={setAiEnhanceDraft} />
             </div>
-            <div className="text-[#9CA3AF] text-[11px] leading-[16.5px] font-normal font-['Inter']">
-              Automatically refactor and optimize generated code using our advanced AI models.
+            <div className={`ml-3 border-l border-[#2A2F4C] pl-4 transition-opacity ${modelApiDisabledClass}`}>
+              <div className="flex flex-col gap-3">
+                <div className="text-[#9CA3AF] text-[11px] leading-[16.5px] font-normal font-['Inter']">
+                  Enhance generated code with your model configuration.
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label>Model API Endpoint URL</Label>
+                  <div className="relative">
+                    <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#9CA3AF]" />
+                    <Input
+                      ref={modelApiEndpointInputRef}
+                      value={apiEndpoint}
+                      onChange={(e) => setApiEndpoint(e.target.value)}
+                      disabled={modelApiDisabled}
+                      placeholder="https://your-llm-api.example/v1"
+                      autoComplete="off"
+                      onBlur={() => setModelApiEndpointTouched(true)}
+                      aria-invalid={modelApiEndpointInvalid}
+                      className={`pl-9 ${modelApiEndpointInvalid ? 'border-red-500/70 focus-visible:ring-red-500/40' : ''}`}
+                    />
+                  </div>
+                  {modelApiEndpointInvalid && (
+                    <div className="text-[11px] leading-[16px] text-red-400">Model API Endpoint 是必填项</div>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label>Model</Label>
+                  <Input
+                    value={modelNameDraft}
+                    onChange={(e) => setModelNameDraft(e.target.value)}
+                    disabled={modelApiDisabled}
+                    placeholder="gpt-4o"
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label>Model API Key</Label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#9CA3AF]" />
+                    <Input
+                      type="text"
+                      ref={modelApiKeyInputRef}
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      disabled={modelApiDisabled}
+                      autoComplete="off"
+                      style={maskedTextStyle}
+                      onBlur={() => setModelApiKeyTouched(true)}
+                      aria-invalid={modelApiKeyInvalid}
+                      className={`pl-9 ${modelApiKeyInvalid ? 'border-red-500/70 focus-visible:ring-red-500/40' : ''}`}
+                    />
+                  </div>
+                  {modelApiKeyInvalid && (
+                    <div className="text-[11px] leading-[16px] text-red-400">Model API Key 是必填项</div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </DialogBody>

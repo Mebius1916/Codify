@@ -106,7 +106,8 @@ export async function convertFigma({
   }
 
   const baseUrl = import.meta.env.VITE_BACKEND_URL?.trim();
-  const resp = await fetch(`${baseUrl}/api/figma/convert/stream`, {
+  const endpoint = aiEnhance ? '/api/figma/convert/stream' : '/api/figma/convert'
+  const resp = await fetch(`${baseUrl}${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -124,7 +125,9 @@ export async function convertFigma({
       : `Figma 转换失败: ${resp.status} ${resp.statusText}`
     throw new Error(Array.isArray(message) ? message.join(', ') : String(message))
   }
-  const result = await readConvertStream(resp, onLog)
+  const result = aiEnhance
+    ? await readConvertStream(resp, onLog)
+    : await resp.json() as FigmaConvertResult
   if (result.aiEnhanceMeta?.status !== 'failed') {
     await convertResultCache.setItem(cacheKey, JSON.stringify(result))
   }

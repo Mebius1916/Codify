@@ -107,8 +107,8 @@ export function useWorkspaceSettingsModalState({
   }
 
   const figmaTokenInvalid = !figmaTokenDraft.trim() && figmaTokenTouched
-  const modelApiEndpointInvalid = !apiEndpoint.trim() && modelApiEndpointTouched
-  const modelApiKeyInvalid = !apiKey.trim() && modelApiKeyTouched
+  const modelApiEndpointInvalid = aiEnhanceDraft && !apiEndpoint.trim() && modelApiEndpointTouched
+  const modelApiKeyInvalid = aiEnhanceDraft && !apiKey.trim() && modelApiKeyTouched
 
   return {
     framework,

@@ -40,7 +40,7 @@ export const useUiStore = create<UiState>()(
       modelApiEndpoint: '',
       modelApiKey: '',
       modelName: 'gpt-4o',
-      aiEnhance: true,
+      aiEnhance: false,
       figmaToken: '',
 
       setPreviewContentSize: (size: PreviewContentSize | null) => {
