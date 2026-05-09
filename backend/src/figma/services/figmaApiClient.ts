@@ -1,5 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
+import LRUCache from 'lru-cache'
 import type { FigmaNodeRef } from '../types/figmaTypes.ts'
+
+const FIGMA_RENDER_PNG_CACHE_TTL_MS = 30 * 60 * 1000
+const FIGMA_RENDER_PNG_CACHE_MAX = 100
 
 interface FigmaApiResponse {
   body?: unknown
@@ -11,6 +15,11 @@ interface FigmaImagesResponse {
 
 @Injectable()
 export class FigmaApiClient {
+  private readonly renderPngCache = new LRUCache<string, string>({
+    max: FIGMA_RENDER_PNG_CACHE_MAX,
+    ttl: FIGMA_RENDER_PNG_CACHE_TTL_MS,
+  })
+
   parseFigmaUrl(figmaUrl: string): FigmaNodeRef {
     const parsed = new URL(figmaUrl)
     const pathMatch = parsed.pathname.match(/\/(?:file|design)\/([a-zA-Z0-9]+)/)
@@ -44,6 +53,10 @@ export class FigmaApiClient {
 
   async fetchFigmaRenderPngBase64({ fileKey, nodeId }: FigmaNodeRef, token: string): Promise<string> {
     const normalizedNodeId = this.normalizeNodeId(nodeId)
+    const cacheKey = `${fileKey}:${normalizedNodeId}:png:1`
+    const cached = this.renderPngCache.get(cacheKey)
+    if (cached) return cached
+
     const imagesResp = await fetch(
       `https://api.figma.com/v1/images/${fileKey}?ids=${encodeURIComponent(normalizedNodeId)}&format=png&scale=1`,
       { headers: { 'X-Figma-Token': token } },
@@ -63,7 +76,9 @@ export class FigmaApiClient {
       throw new BadRequestException(`Failed to download Figma image: ${imageResp.status} ${imageResp.statusText}`)
     }
 
-    return Buffer.from(await imageResp.arrayBuffer()).toString('base64')
+    const base64 = Buffer.from(await imageResp.arrayBuffer()).toString('base64')
+    this.renderPngCache.set(cacheKey, base64)
+    return base64
   }
 
   private normalizeNodeId(nodeId: string): string {

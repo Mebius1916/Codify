@@ -70,6 +70,9 @@ importers:
       dotenv:
         specifier: ^16.4.7
         version: 16.6.1
+      lru-cache:
+        specifier: 7.18.3
+        version: 7.18.3
       puppeteer:
         specifier: ^24.42.0
         version: 24.42.0(typescript@5.9.3)

@@ -14,7 +14,6 @@ interface UiState {
   modelName: string
   aiEnhance: boolean
   figmaToken: string
-  algorithmOptions: Record<string, unknown>
 
   setPreviewContentSize: (size: PreviewContentSize | null) => void
   setModelApiEndpoint: (endpoint: string) => void
@@ -22,7 +21,6 @@ interface UiState {
   setModelName: (model: string) => void
   setAiEnhance: (enabled: boolean) => void
   setFigmaToken: (token: string) => void
-  setAlgorithmOptions: (next: Record<string, unknown>) => void
 }
 
 type SetState<T> = (
@@ -44,7 +42,6 @@ export const useUiStore = create<UiState>()(
       modelName: 'gpt-4o',
       aiEnhance: true,
       figmaToken: '',
-      algorithmOptions: {},
 
       setPreviewContentSize: (size: PreviewContentSize | null) => {
         set({ previewContentSize: size })
@@ -70,9 +67,6 @@ export const useUiStore = create<UiState>()(
         set({ figmaToken: token })
       },
 
-      setAlgorithmOptions: (next: Record<string, unknown>) => {
-        set({ algorithmOptions: next })
-      },
     }),
     {
       name: 'ui-storage',
@@ -85,7 +79,6 @@ export const useUiStore = create<UiState>()(
         modelName: state.modelName,
         aiEnhance: state.aiEnhance,
         figmaToken: state.figmaToken,
-        algorithmOptions: state.algorithmOptions,
       }),
     }
   )

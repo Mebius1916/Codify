@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import type { AlgorithmOptions } from '@codify/design2code';
 import { useUiStore } from '@/features/workspace/store/uiStore';
 import { convertFigma } from '../services/figma';
 import type { FigmaConvertResult } from '../interfaces/model';
@@ -14,21 +13,19 @@ export function useFigmaUrlParser() {
   const [state, setState] = useState<FigmaUrlParserState>({ status: 'idle' });
   const {
     figmaToken,
-    algorithmOptions: storedAlgorithmOptions,
     aiEnhance,
     modelApiEndpoint,
     modelApiKey,
     modelName,
   } = useUiStore((s) => ({
     figmaToken: s.figmaToken,
-    algorithmOptions: s.algorithmOptions,
     aiEnhance: s.aiEnhance,
     modelApiEndpoint: s.modelApiEndpoint,
     modelApiKey: s.modelApiKey,
     modelName: s.modelName,
   }));
 
-  const parse = async (inputUrl: string, algorithmOptions?: Partial<AlgorithmOptions>) => {
+  const parse = async (inputUrl: string) => {
     if (!inputUrl) {
       setState({ status: 'error', error: '请输入 figma url' });
       return null;
@@ -46,7 +43,6 @@ export function useFigmaUrlParser() {
       const result = await convertFigma({
         figmaUrl: inputUrl,
         token,
-        algorithmOptions: (algorithmOptions || storedAlgorithmOptions) as Partial<AlgorithmOptions> | undefined,
         aiEnhance,
         aiOptions: aiEnhance
           ? {

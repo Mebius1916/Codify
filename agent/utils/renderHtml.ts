@@ -87,7 +87,6 @@ export async function renderHtmlToPngBase64(
   }
 }
 
-// 统一 endpoint 校验，提前暴露配置错误
 function normalizeEndpoint(endpoint: string): string {
   const trimmed = endpoint?.trim();
   if (!trimmed) {
@@ -96,8 +95,7 @@ function normalizeEndpoint(endpoint: string): string {
   return trimmed;
 }
 
-// 纯函数：渲染最新 HTML 并与 baseline 计算像素 diff，返回结构化结果
-// 不引用任何运行时上下文，方便复用与单测
+
 export async function renderAndDiffAgainstBaseline(
   options: RenderAndDiffOptions
 ): Promise<RenderAndDiffResult> {
@@ -106,7 +104,7 @@ export async function renderAndDiffAgainstBaseline(
     html: options.html,
     width: options.viewportWidth,
     height: options.viewportHeight,
-    fullPage: true,
+    fullPage: false,
     timeoutMs: options.timeoutMs,
   });
 

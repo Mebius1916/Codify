@@ -34,7 +34,6 @@ export class FigmaService {
       figmaData,
       nodeRef,
       token,
-      algorithmOptions: input.algorithmOptions,
     })
 
     if (!input.aiEnhance) {

@@ -16,7 +16,6 @@ import { Input } from '@/ui/input';
 import { Label } from '@/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/select';
 import { Switch } from '@/ui/switch';
-import { AlgorithmOptionsForm } from './AlgorithmOptionsForm';
 import { useWorkspaceSettingsModalState } from '../hooks/useWorkspaceSettingsModalState';
 
 const maskedTextStyle = { WebkitTextSecurity: 'disc' } as CSSProperties;
@@ -58,10 +57,6 @@ export function WorkspaceSettingsModal({
     modelApiKeyInputRef,
     modelApiEndpointInvalid,
     modelApiKeyInvalid,
-    algorithmOptionsEnabled,
-    setAlgorithmOptionsEnabled,
-    algorithmOptionsDraft,
-    setAlgorithmOptionsDraft,
     handleSave,
   } = useWorkspaceSettingsModalState({
     open,
@@ -205,12 +200,6 @@ export function WorkspaceSettingsModal({
             </div>
           </div>
 
-          <AlgorithmOptionsForm
-            value={algorithmOptionsDraft}
-            enabled={algorithmOptionsEnabled}
-            onEnabledChange={setAlgorithmOptionsEnabled}
-            onChange={setAlgorithmOptionsDraft}
-          />
           <div className="pt-4 border-t border-[#2A2F4C] flex flex-col gap-4">
             <div className="text-[#E5E7EB] text-sm leading-5 font-medium uppercase tracking-[0.07em] font-['Inter']">
               AI Features

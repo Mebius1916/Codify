@@ -30,7 +30,7 @@ export class FigmaAiEnhanceService {
         width: viewport.width,
         height: viewport.height,
         format: 'png',
-        fullPage: true,
+        fullPage: false,
         deviceScaleFactor: 1,
       })
 
@@ -43,8 +43,8 @@ export class FigmaAiEnhanceService {
         baseUrl: input.dto.aiOptions.baseUrl.trim(),
         temperature: input.dto.aiOptions.temperature ?? 0,
         threshold: 0.1,
-        renderEndpoint: `http://localhost:${env.port}/api/render/html`,
-        targetSimilarity: input.dto.aiOptions.targetSimilarity,
+        renderEndpoint: env.renderEndpoint,
+        targetSimilarity: 0.9,
         viewportWidth: viewport.width,
         viewportHeight: viewport.height,
       })
