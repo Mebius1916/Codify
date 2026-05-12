@@ -61,13 +61,15 @@ export function HomePage() {
         <Brand />
         <div className="inline-flex items-center rounded-full border border-[#2A2F4C] bg-[#15182A]/70 p-1 shadow-sm backdrop-blur-sm">
           <Button
-            type="button"
+            asChild
             variant="ghost"
             size="sm"
             className="h-8 rounded-full px-4 text-slate-300 hover:bg-white/5"
-            title="Sign in (Coming soon)"
+            title="GitHub"
           >
-            Sign in
+            <a href="https://github.com/Mebius1916/Codify" target="_blank" rel="noreferrer">
+              GitHub
+            </a>
           </Button>
           <div className="mx-1 h-6 w-px bg-white/10" />
           <Button

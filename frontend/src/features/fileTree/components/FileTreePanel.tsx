@@ -1,6 +1,7 @@
 import { openFile } from '@/features/workspace/services/workspaceService'
 import { useFeatures } from '@/features/workspace/providers/featureFlags'
 import { useEditorStore } from '@/features/workspace/store/editorStore'
+import { useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useFileTreeData, useFileTreeResizeCssVars, useFileTreeActions } from '../hooks'
 import type { FileTreeNodeData } from '../interfaces/contracts'
@@ -18,6 +19,7 @@ interface FileTreePanelProps {
 }
 
 export function FileTreePanel({ actions, showHeader }: FileTreePanelProps) {
+  const [isDownloading, setIsDownloading] = useState(false)
   const { fileKeys, activeFile } = useEditorStore(
     useShallow((state) => ({
       fileKeys: state.fileKeys,
@@ -44,6 +46,19 @@ export function FileTreePanel({ actions, showHeader }: FileTreePanelProps) {
   }
 
   const shouldShowHeader = showHeader ?? (isToolbarEnabled === false)
+
+  const handleDownloadAll = async () => {
+    if (isDownloading) return
+    setIsDownloading(true)
+    try {
+      const { files, fileKeys } = useEditorStore.getState()
+      await downloadAllFilesAsZip({ files, fileKeys, zipName: 'project.zip' })
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setIsDownloading(false)
+    }
+  }
 
   return (
     <div className="flex h-full relative group">
@@ -83,19 +98,19 @@ export function FileTreePanel({ actions, showHeader }: FileTreePanelProps) {
         <div className="w-full p-3 bg-[#131620] border-t border-[#2A2F4C] flex flex-col items-start">
           <button
             type="button"
-            className="w-full px-3 py-2 bg-[#1A1E32] rounded outline outline-1 outline-[#2A2F4C] -outline-offset-1 inline-flex items-center justify-center gap-2"
-	            onClick={() => {
-	              const { files, fileKeys } = useEditorStore.getState()
-	              void downloadAllFilesAsZip({ files, fileKeys, zipName: 'project.zip' }).catch((error: unknown) => {
-	                console.error(error)
-	              })
-	            }}
+            disabled={isDownloading}
+            className="w-full px-3 py-2 bg-[#1A1E32] rounded outline outline-1 outline-[#2A2F4C] -outline-offset-1 inline-flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={handleDownloadAll}
           >
             <div className="flex flex-col items-center">
-              <img src={downloadIconUrl} alt="" className="w-[8.15px] h-[9.93px]" />
+              {isDownloading ? (
+                <div className="h-[10px] w-[10px] rounded-full border border-[#D1D5DB]/40 border-t-[#D1D5DB] animate-spin" />
+              ) : (
+                <img src={downloadIconUrl} alt="" className="w-[8.15px] h-[9.93px]" />
+              )}
             </div>
             <div className="text-center text-[#D1D5DB] text-xs leading-4 font-medium font-['Inter']">
-              Download All
+              {isDownloading ? 'Downloading...' : 'Download All'}
             </div>
           </button>
         </div>

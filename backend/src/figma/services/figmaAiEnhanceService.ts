@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common'
+import { BadRequestException, Injectable, Logger } from '@nestjs/common'
 import { visualDiff } from '@codify/agent'
 import { env } from '../../config/env.ts'
 import { RenderService } from '../../render/renderService.ts'
@@ -8,8 +8,18 @@ import type { AiEnhanceResult, CodegenResult, FigmaNodeRef } from '../types/figm
 
 const FIGMA_AI_ENHANCE_TIMEOUT_MS = 3 * 60_000
 
+function readPngSize(base64: string): { width: number; height: number } {
+  const buffer = Buffer.from(base64, 'base64')
+  return {
+    width: buffer.readUInt32BE(16),
+    height: buffer.readUInt32BE(20),
+  }
+}
+
 @Injectable()
 export class FigmaAiEnhanceService {
+  private readonly logger = new Logger(FigmaAiEnhanceService.name)
+
   constructor(
     private readonly figmaApiClient: FigmaApiClient,
     private readonly renderService: RenderService,
@@ -24,8 +34,10 @@ export class FigmaAiEnhanceService {
     try {
       if (!input.dto.aiOptions?.apiKey?.trim()) throw new BadRequestException('AI enhance 缺少 apiKey')
 
-      const viewport = this.resolveViewport(input.codegenResult)
+      this.logger.log(`AI enhance started: model=${input.dto.aiOptions.model?.trim() || 'gpt-4o'} baseUrl=${input.dto.aiOptions.baseUrl.trim()}`)
       const baselinePngBase64 = await this.figmaApiClient.fetchFigmaRenderPngBase64(input.nodeRef, input.token)
+      const viewport = readPngSize(baselinePngBase64)
+      this.logger.log(`AI enhance baseline image fetched: viewport=${viewport.width}x${viewport.height}`)
       const currentHtml = this.buildRenderableHtml(input.codegenResult)
       const { buffer } = await this.renderService.renderHtmlToImage({
         html: currentHtml,
@@ -35,7 +47,9 @@ export class FigmaAiEnhanceService {
         fullPage: false,
         deviceScaleFactor: 1,
       })
+      this.logger.log('AI enhance current HTML rendered')
 
+      const abortController = new AbortController()
       const result = await this.withTimeout(
         visualDiff({
           baselinePngBase64,
@@ -50,16 +64,23 @@ export class FigmaAiEnhanceService {
           targetSimilarity: 0.9,
           viewportWidth: viewport.width,
           viewportHeight: viewport.height,
+          onProgress: (event) => {
+            this.logger.log(`AI enhance agent ${event.event}${event.details ? ` ${JSON.stringify(event.details)}` : ''}`)
+          },
+          abortSignal: abortController.signal,
         }),
         FIGMA_AI_ENHANCE_TIMEOUT_MS,
         'AI enhance 超时，请检查模型接口是否可用或稍后重试',
+        () => abortController.abort(),
       )
 
+      this.logger.log('AI enhance completed')
       return {
         result,
         meta: { enabled: true, status: 'done' },
       }
     } catch (error) {
+      this.logger.error(`AI enhance failed: ${this.formatError(error)}`)
       return {
         meta: {
           enabled: true,
@@ -78,16 +99,17 @@ export class FigmaAiEnhanceService {
     return `<style>${result.css}</style>${result.html}`
   }
 
-  private resolveViewport(result: CodegenResult): { width: number; height: number } {
-    const width = result.size?.width
-    const height = result.size?.height
-    if (width && height) return { width, height }
-    return { width: 1280, height: 800 }
-  }
-
-  private withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  private withTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    message: string,
+    onTimeout?: () => void,
+  ): Promise<T> {
     return new Promise((resolve, reject) => {
-      const timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs)
+      const timeoutId = setTimeout(() => {
+        onTimeout?.()
+        reject(new Error(message))
+      }, timeoutMs)
       promise.then(
         (value) => {
           clearTimeout(timeoutId)

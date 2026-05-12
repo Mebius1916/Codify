@@ -1,4 +1,14 @@
-import { Body, Controller, Header, HttpCode, Post, StreamableFile } from '@nestjs/common'
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Header,
+  HttpCode,
+  Logger,
+  Post,
+  ServiceUnavailableException,
+  StreamableFile,
+} from '@nestjs/common'
 import { Readable } from 'node:stream'
 
 interface DownloadImageDto {
@@ -7,19 +17,43 @@ interface DownloadImageDto {
 
 @Controller('/api/assets')
 export class AssetController {
+  private readonly logger = new Logger(AssetController.name)
+
   @Post('/download-image')
   @HttpCode(200)
   @Header('Cache-Control', 'no-store')
   async downloadImage(@Body() body: DownloadImageDto) {
-    const response = await fetch(body.url)
+    let parsedUrl: URL
+    try {
+      parsedUrl = new URL(body.url)
+    } catch {
+      throw new BadRequestException('图片下载失败：资源 URL 无效')
+    }
+
+    let response: Response
+    try {
+      response = await fetch(parsedUrl)
+    } catch (error) {
+      const message = this.formatError(error)
+      this.logger.error(`Asset download request failed: host=${parsedUrl.host} message=${message}`)
+      throw new ServiceUnavailableException(`图片下载失败：无法访问远程资源 (${message})`)
+    }
+
     if (!response.ok) {
-      throw new Error(`Failed to download asset: ${response.status} ${response.statusText}`)
+      this.logger.warn(`Asset download returned non-ok response: host=${parsedUrl.host} status=${response.status} ${response.statusText}`)
+      throw new BadRequestException(`图片下载失败：${response.status} ${response.statusText}`)
     }
 
     const buffer = Buffer.from(await response.arrayBuffer())
+    const contentType = response.headers.get('content-type') || 'application/octet-stream'
     return new StreamableFile(Readable.from(buffer), {
-      type: 'image/png',
+      type: contentType,
       length: buffer.length,
     })
+  }
+
+  private formatError(error: unknown): string {
+    if (error instanceof Error) return error.message
+    return String(error)
   }
 }

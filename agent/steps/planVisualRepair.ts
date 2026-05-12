@@ -51,7 +51,9 @@ export async function planVisualRepair(
 
   // 由 context 现场投影出消息序列（system + 视觉槽 + 裁剪后的 history），再追加本步指令。
   const projected = await toLLMMessages(input.context, llm);
-  const rawPatches = await structuredLlm.invoke([...projected, instruction]);
+  const rawPatches = await structuredLlm.invoke([...projected, instruction], {
+    signal: input.context.input.abortSignal,
+  });
   const patches = sanitizers.plan(rawPatches, { currentHtml: input.currentHtml });
 
   // 把本步的 Human 指令 + AI 的 patches 结果 append 回去，作为后续 rewrite 可见的历史。

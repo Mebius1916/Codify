@@ -4,6 +4,7 @@ import { rewriteHtml } from "../steps/rewriteHtml.js";
 import type { VisualRepairContext } from "./loop.js";
 import type { RepairAction } from "./repairAction.js";
 import { refreshVisualRegression } from "./utils/visualRegression.js";
+import { reportAgentProgress, runWithAgentProgress } from "./utils/progress.js";
 
 function formatRuntimeError(error: unknown): string {
   if (error instanceof Error) {
@@ -48,11 +49,16 @@ export async function executeRepairAction(
 
       // 每轮 rewrite 后闭环视觉回归；新截图等会被 toLLMMessages 在下一次调用时自然投影出去。
       try {
-        await refreshVisualRegression(context);
+        await runWithAgentProgress(context, "visual-regression", {}, () =>
+          refreshVisualRegression(context)
+        );
         context.visualRegressionError = undefined;
       } catch (error) {
         // 渲染失败时不影响 rewrite 本身；固定工作流继续导出改写后的结果。
         context.visualRegressionError = formatRuntimeError(error);
+        reportAgentProgress(context, "visual-regression:ignored-error", {
+          error: context.visualRegressionError,
+        });
       }
 
       return action;

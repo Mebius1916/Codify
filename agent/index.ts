@@ -28,6 +28,8 @@ export function visualDiff(params: VisualDiffParams) {
     targetSimilarity,
     viewportWidth,
     viewportHeight,
+    onProgress,
+    abortSignal,
   } = params;
 
   const diff = diffPng(baselinePngBase64, currentPngBase64, threshold);
@@ -53,6 +55,8 @@ export function visualDiff(params: VisualDiffParams) {
     baseUrl,
     temperature,
     visualRegression,
+    onProgress,
+    abortSignal,
   } satisfies RunVisualRepairParams;
 
   const llm = createLLM({

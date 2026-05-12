@@ -48,7 +48,9 @@ export async function observeVisualDiff(
   const instruction = new HumanMessage(buildObserveInstruction(input));
 
   const projected = await toLLMMessages(input.context, llm);
-  const observation = await structuredLlm.invoke([...projected, instruction]);
+  const observation = await structuredLlm.invoke([...projected, instruction], {
+    signal: input.context.input.abortSignal,
+  });
   const sanitized = sanitizers.observe(observation);
 
   // 把本步的 Human 指令 + AI 的结构化观察结果 append 回去，作为后续步骤可见的"历史"。

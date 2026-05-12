@@ -59,7 +59,9 @@ export async function rewriteHtml(
 
   // 由 context 现场投影出消息序列（system + 视觉槽 + 裁剪后的 history），再追加本步指令。
   const projected = await toLLMMessages(input.context, llm);
-  const rawResult = await structuredLlm.invoke([...projected, instruction]);
+  const rawResult = await structuredLlm.invoke([...projected, instruction], {
+    signal: input.context.input.abortSignal,
+  });
   const result = sanitizers.rewrite(rawResult, {
     previousHtml: input.currentHtml,
   });

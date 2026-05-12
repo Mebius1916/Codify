@@ -8,6 +8,7 @@ import { exportHtmlCss } from "../steps/exportHtmlCss.js";
 import { observeVisualDiff } from "../steps/observeVisualDiff.js";
 import { executeRepairAction } from "./actionExecutor.js";
 import type { RepairAction } from "./repairAction.js";
+import { runWithAgentProgress } from "./utils/progress.js";
 
 export interface VisualRepairContext {
   input: RunVisualRepairParams;
@@ -38,10 +39,16 @@ export async function runVisualRepairLoop(
     history: [],
   };
 
-  const { appendedMessages: observeAppend } = await observeVisualDiff(llm, {
+  const { appendedMessages: observeAppend } = await runWithAgentProgress(
     context,
-    diffRatio: params.diffRatio,
-  });
+    "observe",
+    { diffRatio: params.diffRatio },
+    () =>
+      observeVisualDiff(llm, {
+        context,
+        diffRatio: params.diffRatio,
+      })
+  );
 
   context.history.push(...observeAppend);
 
@@ -49,14 +56,23 @@ export async function runVisualRepairLoop(
     type: "plan",
     reason: "固定工作流：观察后生成一轮修复计划。",
   };
-  await executeRepairAction(llm, context, planAction);
+  await runWithAgentProgress(context, "plan", { reason: planAction.reason }, () =>
+    executeRepairAction(llm, context, planAction)
+  );
 
   context.round += 1;
   const rewriteAction: RepairAction = {
     type: "rewrite",
     reason: "固定工作流：按修复计划执行一次改写并刷新视觉回归结果。",
   };
-  await executeRepairAction(llm, context, rewriteAction);
+  await runWithAgentProgress(context, "rewrite", { reason: rewriteAction.reason }, () =>
+    executeRepairAction(llm, context, rewriteAction)
+  );
 
-  return exportHtmlCss(llm, { currentHtml: context.currentHtml });
+  return runWithAgentProgress(context, "export", {}, () =>
+    exportHtmlCss(llm, {
+      currentHtml: context.currentHtml,
+      abortSignal: context.input.abortSignal,
+    })
+  );
 }

@@ -6,6 +6,11 @@ export interface VisualRegressionConfig {
   diffThreshold: number;
 }
 
+export interface AgentProgressEvent {
+  event: string;
+  details?: Record<string, unknown>;
+}
+
 export interface RunVisualRepairParams {
   baselinePngBase64: string;
   currentPngBase64: string;
@@ -17,6 +22,8 @@ export interface RunVisualRepairParams {
   baseUrl: string;
   temperature: number;
   visualRegression: VisualRegressionConfig;
+  onProgress?: (event: AgentProgressEvent) => void;
+  abortSignal?: AbortSignal;
 }
 
 export interface VisualDiffParams {
@@ -32,4 +39,6 @@ export interface VisualDiffParams {
   targetSimilarity?: number;
   viewportWidth?: number;
   viewportHeight?: number;
+  onProgress?: (event: AgentProgressEvent) => void;
+  abortSignal?: AbortSignal;
 }

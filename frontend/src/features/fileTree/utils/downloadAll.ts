@@ -8,6 +8,11 @@ interface DownloadAllFilesOptions {
   zipName?: string
 }
 
+interface DownloadedAsset {
+  bytes: Uint8Array
+  contentType: string
+}
+
 function triggerDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -19,7 +24,7 @@ function triggerDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url)
 }
 
-async function fetchAsset(url: string): Promise<Uint8Array> {
+async function fetchAsset(url: string): Promise<DownloadedAsset> {
   const baseUrl = import.meta.env.VITE_BACKEND_URL?.trim()
   const response = await fetch(`${baseUrl}/api/assets/download-image`, {
     method: 'POST',
@@ -29,7 +34,10 @@ async function fetchAsset(url: string): Promise<Uint8Array> {
   if (!response.ok) {
     throw new Error(`Failed to download asset: ${response.status} ${response.statusText}`)
   }
-  return new Uint8Array(await response.arrayBuffer())
+  return {
+    bytes: new Uint8Array(await response.arrayBuffer()),
+    contentType: response.headers.get('content-type')?.split(';')[0]?.trim() || 'application/octet-stream',
+  }
 }
 
 async function mapWithConcurrency<T>(
@@ -63,9 +71,10 @@ async function rewriteRemoteImagesToAssets(html: string): Promise<{
     imageSrcs,
     ASSET_DOWNLOAD_CONCURRENCY,
     async (url, index) => {
-      const assetName = `image-${index + 1}.png`
+      const asset = await fetchAsset(url)
+      const assetName = `image-${index + 1}.${getAssetExtension(asset.contentType)}`
       const zipPath = `assets/${assetName}`
-      assets[zipPath] = await fetchAsset(url)
+      assets[zipPath] = asset.bytes
       assetPathByUrl.set(url, `../${zipPath}`)
     },
   )
@@ -93,4 +102,17 @@ export async function downloadAllFilesAsZip(args: DownloadAllFilesOptions) {
   const zipped = zipSync(entries, { level: 0 })
   const blob = new Blob([new Uint8Array(zipped)], { type: 'application/zip' })
   triggerDownload(blob, zipName || 'downloadAll.zip')
+}
+
+function getAssetExtension(contentType: string): string {
+  switch (contentType) {
+    case 'image/svg+xml':
+      return 'svg'
+    case 'image/png':
+      return 'png'
+    case 'image/jpeg':
+      return 'jpg'
+    default:
+      return 'bin'
+  }
 }
