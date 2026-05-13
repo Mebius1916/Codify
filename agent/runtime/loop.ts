@@ -1,7 +1,7 @@
-import { type BaseMessage } from "@langchain/core/messages";
 import type { ChatOpenAI } from "@langchain/openai";
 
 import type { HtmlCssResult } from "../interfaces/htmlCssResult.js";
+import type { ObserveResult } from "../interfaces/observeResult.js";
 import type { RepairPatch } from "../interfaces/repairPatch.js";
 import type { RunVisualRepairParams } from "../interfaces/runtime.js";
 import { exportHtmlCss } from "../steps/exportHtmlCss.js";
@@ -18,16 +18,16 @@ export interface VisualRepairContext {
   currentPngBase64: string;
   diffPngBase64: string;
   diffRatio: number;
+  observation?: ObserveResult;
   repairPatches?: RepairPatch[];
   visualRegressionError?: string;
-  history: BaseMessage[];
 }
 
 export async function runVisualRepairLoop(
   llm: ChatOpenAI,
   params: RunVisualRepairParams
 ): Promise<HtmlCssResult> {
-  // 维护本轮修复过程中逐步产出的中间结果；事实源唯一，messages 由 toLLMMessages 派生。
+  // 维护固定工作流里的结构化 handoff state；messages 由当前步骤现场投影。
   const context: VisualRepairContext = {
     input: params,
     round: 1,
@@ -36,10 +36,9 @@ export async function runVisualRepairLoop(
     currentPngBase64: params.currentPngBase64,
     diffPngBase64: params.diffPngBase64,
     diffRatio: params.diffRatio,
-    history: [],
   };
 
-  const { appendedMessages: observeAppend } = await runWithAgentProgress(
+  const { observation } = await runWithAgentProgress(
     context,
     "observe",
     { diffRatio: params.diffRatio },
@@ -50,7 +49,7 @@ export async function runVisualRepairLoop(
       })
   );
 
-  context.history.push(...observeAppend);
+  context.observation = observation;
 
   const planAction: RepairAction = {
     type: "plan",

@@ -20,17 +20,16 @@ export async function executeRepairAction(
 ): Promise<RepairAction> {
   switch (action.type) {
     case "plan": {
-      const { patches, appendedMessages } = await planVisualRepair(llm, {
+      const { patches } = await planVisualRepair(llm, {
         context,
         currentHtml: context.currentHtml,
       });
-      context.history.push(...appendedMessages);
       context.repairPatches = patches;
+      context.observation = undefined;
       return action;
     }
 
     case "rewrite": {
-      context.rewriteRounds += 1;
       const repairPatchesJson = JSON.stringify(
         context.repairPatches ?? [],
         null,
@@ -38,16 +37,16 @@ export async function executeRepairAction(
       );
 
       // patch 只作为结构化计划，真正的改写仍交给 AI 执行。
-      const { result: rewriteResult, appendedMessages: rewriteAppend } =
-        await rewriteHtml(llm, {
-          context,
-          repairPatchesJson,
-          currentHtml: context.currentHtml,
-        });
-      context.history.push(...rewriteAppend);
+      const { result: rewriteResult } = await rewriteHtml(llm, {
+        context,
+        repairPatchesJson,
+        currentHtml: context.currentHtml,
+      });
       context.currentHtml = rewriteResult.html;
+      context.repairPatches = undefined;
+      context.rewriteRounds += 1;
 
-      // 每轮 rewrite 后闭环视觉回归；新截图等会被 toLLMMessages 在下一次调用时自然投影出去。
+      // 每轮 rewrite 后闭环视觉回归；新截图等会被下一步骤现场投影出去。
       try {
         await runWithAgentProgress(context, "visual-regression", {}, () =>
           refreshVisualRegression(context)

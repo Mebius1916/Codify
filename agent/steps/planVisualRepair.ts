@@ -1,16 +1,14 @@
-import {
-  AIMessage,
-  HumanMessage,
-  type BaseMessage,
-} from "@langchain/core/messages";
+import { HumanMessage } from "@langchain/core/messages";
 import type { ChatOpenAI } from "@langchain/openai";
 
+import type { ObserveResult } from "../interfaces/observeResult.js";
 import {
   repairPatchListSchema,
   type RepairPatch,
 } from "../interfaces/repairPatch.js";
 import { planVisualRepairSystemPrompt } from "../prompts/plan.js";
 import type { VisualRepairContext } from "../runtime/loop.js";
+import { compactHtmlForPrompt } from "../runtime/utils/htmlPrompt.js";
 import { toLLMMessages } from "../runtime/utils/llmContext.js";
 import { sanitizers } from "../sanitizers/index.js";
 
@@ -21,20 +19,31 @@ export interface PlanVisualRepairInput {
 
 export interface PlanVisualRepairOutput {
   patches: RepairPatch[];
-  appendedMessages: BaseMessage[];
 }
 
-function buildPlanInstruction(currentHtml: string): string {
+function buildPlanInstruction(
+  currentHtml: string,
+  observation?: ObserveResult
+): string {
   return [
     planVisualRepairSystemPrompt,
     "",
     "===== 本步任务 =====",
-    "请基于上文的视觉上下文（baseline/current/diff 三张图）与之前的观察结论，",
+    "请基于上文的视觉上下文（baseline/current/diff 三张图）与本轮观察结论，",
     "结合下面的当前 Tailwind HTML 片段，生成一份按优先级排序的结构化修复计划。",
     "",
+    observation
+      ? [
+          "## 本轮观察结论",
+          JSON.stringify(observation, null, 2),
+          "",
+        ].join("\n")
+      : undefined,
     "## 当前 Tailwind HTML 片段",
     currentHtml,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export async function planVisualRepair(
@@ -47,20 +56,17 @@ export async function planVisualRepair(
     strict: true,
   });
 
-  const instruction = new HumanMessage(buildPlanInstruction(input.currentHtml));
+  const promptHtml = await compactHtmlForPrompt(input.currentHtml);
+  const instruction = new HumanMessage(
+    buildPlanInstruction(promptHtml, input.context.observation)
+  );
 
-  // 由 context 现场投影出消息序列（system + 视觉槽 + 裁剪后的 history），再追加本步指令。
-  const projected = await toLLMMessages(input.context, llm);
+  // 固定工作流只投影当前视觉槽；观察结果通过结构化 handoff 显式放入本步指令。
+  const projected = toLLMMessages(input.context);
   const rawPatches = await structuredLlm.invoke([...projected, instruction], {
     signal: input.context.input.abortSignal,
   });
   const patches = sanitizers.plan(rawPatches, { currentHtml: input.currentHtml });
 
-  // 把本步的 Human 指令 + AI 的 patches 结果 append 回去，作为后续 rewrite 可见的历史。
-  const appendedMessages: BaseMessage[] = [
-    instruction,
-    new AIMessage(JSON.stringify(patches, null, 2)),
-  ];
-
-  return { patches, appendedMessages };
+  return { patches };
 }

@@ -1,8 +1,4 @@
-import {
-  AIMessage,
-  HumanMessage,
-  type BaseMessage,
-} from "@langchain/core/messages";
+import { HumanMessage } from "@langchain/core/messages";
 import type { ChatOpenAI } from "@langchain/openai";
 
 import {
@@ -11,6 +7,7 @@ import {
 } from "../interfaces/rewriteResult.js";
 import { rewriteHtmlSystemPrompt } from "../prompts/rewrite.js";
 import type { VisualRepairContext } from "../runtime/loop.js";
+import { compactHtmlForPrompt } from "../runtime/utils/htmlPrompt.js";
 import { toLLMMessages } from "../runtime/utils/llmContext.js";
 import { sanitizers } from "../sanitizers/index.js";
 
@@ -22,7 +19,6 @@ export interface RewriteHtmlInput {
 
 export interface RewriteHtmlOutput {
   result: RewriteResult;
-  appendedMessages: BaseMessage[];
 }
 
 function buildRewriteInstruction(
@@ -33,7 +29,7 @@ function buildRewriteInstruction(
     rewriteHtmlSystemPrompt,
     "",
     "===== 本步任务 =====",
-    "请基于上文的视觉上下文（baseline/current/diff 三张图）与之前的观察结论，",
+    "请基于上文的视觉上下文（baseline/current/diff 三张图），",
     "按下面的结构化修复计划修改当前 Tailwind HTML 片段。",
     "",
     "## 结构化修复计划",
@@ -53,12 +49,13 @@ export async function rewriteHtml(
     strict: true,
   });
 
+  const promptHtml = await compactHtmlForPrompt(input.currentHtml);
   const instruction = new HumanMessage(
-    buildRewriteInstruction(input.repairPatchesJson, input.currentHtml)
+    buildRewriteInstruction(input.repairPatchesJson, promptHtml)
   );
 
-  // 由 context 现场投影出消息序列（system + 视觉槽 + 裁剪后的 history），再追加本步指令。
-  const projected = await toLLMMessages(input.context, llm);
+  // 固定工作流只投影当前视觉槽；修复计划和 HTML 由本步指令显式提供。
+  const projected = toLLMMessages(input.context);
   const rawResult = await structuredLlm.invoke([...projected, instruction], {
     signal: input.context.input.abortSignal,
   });
@@ -66,11 +63,5 @@ export async function rewriteHtml(
     previousHtml: input.currentHtml,
   });
 
-  // AI 侧 append 的内容只放 html 字段本身
-  const appendedMessages: BaseMessage[] = [
-    instruction,
-    new AIMessage(result.html),
-  ];
-
-  return { result, appendedMessages };
+  return { result };
 }
