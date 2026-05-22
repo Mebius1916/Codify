@@ -28,7 +28,8 @@ export async function runWithAgentProgress<T>(
   context: VisualRepairContext,
   event: string,
   details: Record<string, unknown>,
-  task: () => Promise<T>
+  task: () => Promise<T>,
+  getResultDetails?: (result: T) => Record<string, unknown>
 ): Promise<T> {
   const startedAt = Date.now();
   throwIfAgentAborted(context);
@@ -39,6 +40,7 @@ export async function runWithAgentProgress<T>(
     throwIfAgentAborted(context);
     reportAgentProgress(context, `${event}:done`, {
       ...details,
+      ...getResultDetails?.(result),
       durationMs: Date.now() - startedAt,
     });
     return result;

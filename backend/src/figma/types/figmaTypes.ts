@@ -1,3 +1,5 @@
+import type { AgentProgressEvent } from '@codify/agent'
+
 export interface CodegenResult {
   html: string
   body: string
@@ -12,5 +14,11 @@ export interface FigmaNodeRef {
 
 export interface AiEnhanceResult {
   result?: { html: string; css: string }
-  meta: { enabled: true; status: 'done' | 'failed'; error?: string }
+  meta: {
+    enabled: true
+    status: 'done' | 'failed'
+    runId: string
+    error?: string
+    events: AgentProgressEvent[]
+  }
 }

@@ -46,7 +46,8 @@ export async function runVisualRepairLoop(
       observeVisualDiff(llm, {
         context,
         diffRatio: params.diffRatio,
-      })
+      }),
+    ({ observation }) => ({ output: observation })
   );
 
   context.observation = observation;
@@ -56,7 +57,8 @@ export async function runVisualRepairLoop(
     reason: "固定工作流：观察后生成一轮修复计划。",
   };
   await runWithAgentProgress(context, "plan", { reason: planAction.reason }, () =>
-    executeRepairAction(llm, context, planAction)
+    executeRepairAction(llm, context, planAction),
+    () => ({ output: { patches: context.repairPatches ?? [] } })
   );
 
   context.round += 1;
@@ -65,13 +67,15 @@ export async function runVisualRepairLoop(
     reason: "固定工作流：按修复计划执行一次改写并刷新视觉回归结果。",
   };
   await runWithAgentProgress(context, "rewrite", { reason: rewriteAction.reason }, () =>
-    executeRepairAction(llm, context, rewriteAction)
+    executeRepairAction(llm, context, rewriteAction),
+    () => ({ output: { html: context.currentHtml } })
   );
 
   return runWithAgentProgress(context, "export", {}, () =>
     exportHtmlCss(llm, {
       currentHtml: context.currentHtml,
       abortSignal: context.input.abortSignal,
-    })
+    }),
+    (result) => ({ output: result })
   );
 }

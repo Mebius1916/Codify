@@ -39,7 +39,7 @@ export class FigmaApiClient {
       { headers: { 'X-Figma-Token': token } },
     )
     if (!figmaResp.ok) {
-      throw new BadRequestException(`Failed to fetch Figma data: ${figmaResp.status} ${figmaResp.statusText}`)
+      throw new BadRequestException(`Failed to fetch Figma data: ${await this.formatFailedResponse(figmaResp)}`)
     }
 
     const rawJson = await figmaResp.json() as unknown
@@ -62,7 +62,7 @@ export class FigmaApiClient {
       { headers: { 'X-Figma-Token': token } },
     )
     if (!imagesResp.ok) {
-      throw new BadRequestException(`Failed to export Figma image: ${imagesResp.status} ${imagesResp.statusText}`)
+      throw new BadRequestException(`Failed to export Figma image: ${await this.formatFailedResponse(imagesResp)}`)
     }
 
     const payload = await imagesResp.json() as FigmaImagesResponse
@@ -73,7 +73,7 @@ export class FigmaApiClient {
 
     const imageResp = await fetch(imageUrl)
     if (!imageResp.ok) {
-      throw new BadRequestException(`Failed to download Figma image: ${imageResp.status} ${imageResp.statusText}`)
+      throw new BadRequestException(`Failed to download Figma image: ${await this.formatFailedResponse(imageResp)}`)
     }
 
     const base64 = Buffer.from(await imageResp.arrayBuffer()).toString('base64')
@@ -83,5 +83,14 @@ export class FigmaApiClient {
 
   private normalizeNodeId(nodeId: string): string {
     return nodeId.replace(/-/g, ':')
+  }
+
+  private async formatFailedResponse(response: Response): Promise<string> {
+    const body = await response.text().catch(() => '')
+    const trimmedBody = body.trim()
+    return [
+      `${response.status} ${response.statusText}`,
+      trimmedBody ? `body=${trimmedBody.slice(0, 2000)}` : undefined,
+    ].filter(Boolean).join(' ')
   }
 }

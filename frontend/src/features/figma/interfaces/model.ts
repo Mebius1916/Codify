@@ -14,6 +14,11 @@ export interface FigmaConvertResult {
   aiEnhanceMeta?: {
     enabled: boolean
     status: 'skipped' | 'done' | 'failed'
+    runId?: string
     error?: string
+    events?: Array<{
+      event: string
+      details?: Record<string, unknown>
+    }>
   }
 }

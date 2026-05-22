@@ -8,6 +8,8 @@ import type {
 } from "./interfaces/runtime.js";
 import { runVisualRepairLoop } from "./runtime/loop.js";
 
+export type { AgentProgressEvent } from "./interfaces/runtime.js";
+
 // 从 PNG base64 中解析出真实的宽高，避免调用方手动传入导致与 baseline 尺寸错位
 function readPngSize(base64: string): { width: number; height: number } {
   const { width, height } = PNG.sync.read(Buffer.from(base64, "base64"));

@@ -1,12 +1,15 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common'
-import { visualDiff } from '@codify/agent'
+import { BadRequestException, Injectable } from '@nestjs/common'
+import { visualDiff, type AgentProgressEvent } from '@codify/agent'
+import { randomUUID } from 'node:crypto'
 import { env } from '../../config/env.ts'
+import { LoggingService } from '../../logging/loggingService.ts'
 import { RenderService } from '../../render/renderService.ts'
 import type { ConvertFigmaDto } from '../dto/convertFigmaDto.ts'
 import { FigmaApiClient } from './figmaApiClient.ts'
 import type { AiEnhanceResult, CodegenResult, FigmaNodeRef } from '../types/figmaTypes.ts'
 
 const FIGMA_AI_ENHANCE_TIMEOUT_MS = 3 * 60_000
+const LOGGABLE_AGENT_EVENT_SUFFIXES = [':done', ':error', ':ignored-error']
 
 function readPngSize(base64: string): { width: number; height: number } {
   const buffer = Buffer.from(base64, 'base64')
@@ -18,11 +21,10 @@ function readPngSize(base64: string): { width: number; height: number } {
 
 @Injectable()
 export class FigmaAiEnhanceService {
-  private readonly logger = new Logger(FigmaAiEnhanceService.name)
-
   constructor(
     private readonly figmaApiClient: FigmaApiClient,
     private readonly renderService: RenderService,
+    private readonly loggingService: LoggingService,
   ) {}
 
   async enhance(input: {
@@ -31,13 +33,21 @@ export class FigmaAiEnhanceService {
     token: string
     codegenResult: CodegenResult
   }): Promise<AiEnhanceResult> {
+    const runId = randomUUID()
+    const events: AgentProgressEvent[] = []
     try {
       if (!input.dto.aiOptions?.apiKey?.trim()) throw new BadRequestException('AI enhance 缺少 apiKey')
 
-      this.logger.log(`AI enhance started: model=${input.dto.aiOptions.model?.trim() || 'gpt-4o'} baseUrl=${input.dto.aiOptions.baseUrl.trim()}`)
+      this.loggingService.info('AI enhance started', {
+        runId,
+        module: 'figma',
+        source: 'backend',
+        event: 'ai-enhance:start',
+        model: input.dto.aiOptions.model?.trim(),
+        nodeId: input.nodeRef.nodeId,
+      })
       const baselinePngBase64 = await this.figmaApiClient.fetchFigmaRenderPngBase64(input.nodeRef, input.token)
       const viewport = readPngSize(baselinePngBase64)
-      this.logger.log(`AI enhance baseline image fetched: viewport=${viewport.width}x${viewport.height}`)
       const currentHtml = this.buildRenderableHtml(input.codegenResult)
       const { buffer } = await this.renderService.renderHtmlToImage({
         html: currentHtml,
@@ -47,7 +57,6 @@ export class FigmaAiEnhanceService {
         fullPage: false,
         deviceScaleFactor: 1,
       })
-      this.logger.log('AI enhance current HTML rendered')
 
       const abortController = new AbortController()
       const result = await this.withTimeout(
@@ -65,7 +74,16 @@ export class FigmaAiEnhanceService {
           viewportWidth: viewport.width,
           viewportHeight: viewport.height,
           onProgress: (event) => {
-            this.logger.log(`AI enhance agent ${event.event}${event.details ? ` ${JSON.stringify(event.details)}` : ''}`)
+            events.push(event)
+            if (this.shouldLogAgentEvent(event.event)) {
+              this.loggingService.info('AI enhance agent progress', {
+                runId,
+                module: 'figma',
+                source: 'agent',
+                event: event.event,
+                details: event.details,
+              })
+            }
           },
           abortSignal: abortController.signal,
         }),
@@ -74,18 +92,32 @@ export class FigmaAiEnhanceService {
         () => abortController.abort(),
       )
 
-      this.logger.log('AI enhance completed')
+      this.loggingService.info('AI enhance completed', {
+        runId,
+        module: 'figma',
+        source: 'backend',
+        event: 'ai-enhance:done',
+      })
       return {
         result,
-        meta: { enabled: true, status: 'done' },
+        meta: { enabled: true, status: 'done', runId, events },
       }
     } catch (error) {
-      this.logger.error(`AI enhance failed: ${this.formatError(error)}`)
+      this.loggingService.error('AI enhance failed', {
+        runId,
+        module: 'figma',
+        source: 'backend',
+        event: 'ai-enhance:failed',
+        error: this.formatError(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      })
       return {
         meta: {
           enabled: true,
           status: 'failed',
+          runId,
           error: this.formatError(error),
+          events,
         },
       }
     }
@@ -126,5 +158,9 @@ export class FigmaAiEnhanceService {
   private formatError(error: unknown): string {
     if (error instanceof Error) return error.message
     return String(error)
+  }
+
+  private shouldLogAgentEvent(event: string): boolean {
+    return LOGGABLE_AGENT_EVENT_SUFFIXES.some((suffix) => event.endsWith(suffix))
   }
 }

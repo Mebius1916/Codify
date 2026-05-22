@@ -11,6 +11,7 @@
   "dependencies": {
     "@codify/agent": "workspace:*",
     "@codify/design2code": "workspace:*",
+    "@logtail/node": "^0.5.8",
     "@nestjs/common": "^10.4.20",
     "@nestjs/core": "^10.4.20",
     "@nestjs/platform-express": "^10.4.20",
