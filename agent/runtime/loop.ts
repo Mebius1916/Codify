@@ -4,10 +4,9 @@ import type { HtmlCssResult } from "../interfaces/htmlCssResult.js";
 import type { ObserveResult } from "../interfaces/observeResult.js";
 import type { RepairPatch } from "../interfaces/repairPatch.js";
 import type { RunVisualRepairParams } from "../interfaces/runtime.js";
-import { exportHtmlCss } from "../steps/exportHtmlCss.js";
 import { observeVisualDiff } from "../steps/observeVisualDiff.js";
 import { executeRepairAction } from "./actionExecutor.js";
-import type { RepairAction } from "./repairAction.js";
+import type { RepairAction } from "./actionExecutor.js";
 import { runWithAgentProgress } from "./utils/progress.js";
 
 export interface VisualRepairContext {
@@ -15,12 +14,12 @@ export interface VisualRepairContext {
   round: number;
   rewriteRounds: number;
   currentHtml: string;
+  currentCss: string;
   currentPngBase64: string;
   diffPngBase64: string;
   diffRatio: number;
   observation?: ObserveResult;
   repairPatches?: RepairPatch[];
-  visualRegressionError?: string;
 }
 
 export async function runVisualRepairLoop(
@@ -33,6 +32,7 @@ export async function runVisualRepairLoop(
     round: 1,
     rewriteRounds: 0,
     currentHtml: params.html,
+    currentCss: "",
     currentPngBase64: params.currentPngBase64,
     diffPngBase64: params.diffPngBase64,
     diffRatio: params.diffRatio,
@@ -64,18 +64,12 @@ export async function runVisualRepairLoop(
   context.round += 1;
   const rewriteAction: RepairAction = {
     type: "rewrite",
-    reason: "固定工作流：按修复计划执行一次改写并刷新视觉回归结果。",
+    reason: "固定工作流：按修复计划执行一次改写并产出最终 html + css。",
   };
   await runWithAgentProgress(context, "rewrite", { reason: rewriteAction.reason }, () =>
     executeRepairAction(llm, context, rewriteAction),
-    () => ({ output: { html: context.currentHtml } })
+    () => ({ output: { html: context.currentHtml, css: context.currentCss } })
   );
 
-  return runWithAgentProgress(context, "export", {}, () =>
-    exportHtmlCss(llm, {
-      currentHtml: context.currentHtml,
-      abortSignal: context.input.abortSignal,
-    }),
-    (result) => ({ output: result })
-  );
+  return { html: context.currentHtml, css: context.currentCss };
 }

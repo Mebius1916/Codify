@@ -1,9 +1,9 @@
 import type { ObserveResult } from "../interfaces/observeResult.js";
 import type { RepairPatch } from "../interfaces/repairPatch.js";
-import type { RewriteResult } from "../interfaces/rewriteResult.js";
+import type { HtmlCssResult } from "../interfaces/htmlCssResult.js";
 import { sanitizeObserveResult } from "./sanitizeObserveResult.js";
 import { sanitizeRepairPatches } from "./sanitizeRepairPatches.js";
-import { sanitizeRewriteResult } from "./sanitizeRewriteResult.js";
+import { sanitizeHtmlCssResult } from "./sanitizeHtmlCssResult.js";
 
 interface SanitizerContext {
   currentHtml?: string;
@@ -17,7 +17,7 @@ export const sanitizers = {
   plan: (payload: RepairPatch[], context: SanitizerContext) =>
     sanitizeRepairPatches(payload, context),
 
-  rewrite: (payload: RewriteResult, context: SanitizerContext) =>
-    sanitizeRewriteResult(payload, context),
+  rewrite: (payload: HtmlCssResult, context: SanitizerContext) =>
+    sanitizeHtmlCssResult(payload, { previousHtml: context.previousHtml ?? "" }),
 
 };

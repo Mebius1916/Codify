@@ -2,15 +2,12 @@ import type { ChatOpenAI } from "@langchain/openai";
 import { planVisualRepair } from "../steps/planVisualRepair.js";
 import { rewriteHtml } from "../steps/rewriteHtml.js";
 import type { VisualRepairContext } from "./loop.js";
-import type { RepairAction } from "./repairAction.js";
-import { refreshVisualRegression } from "./utils/visualRegression.js";
-import { reportAgentProgress, runWithAgentProgress } from "./utils/progress.js";
 
-function formatRuntimeError(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
+export type RepairActionType = "plan" | "rewrite";
+
+export interface RepairAction {
+  type: RepairActionType;
+  reason: string;
 }
 
 export async function executeRepairAction(
@@ -43,22 +40,9 @@ export async function executeRepairAction(
         currentHtml: context.currentHtml,
       });
       context.currentHtml = rewriteResult.html;
+      context.currentCss = rewriteResult.css;
       context.repairPatches = undefined;
       context.rewriteRounds += 1;
-
-      // 每轮 rewrite 后闭环视觉回归；新截图等会被下一步骤现场投影出去。
-      try {
-        await runWithAgentProgress(context, "visual-regression", {}, () =>
-          refreshVisualRegression(context)
-        );
-        context.visualRegressionError = undefined;
-      } catch (error) {
-        // 渲染失败时不影响 rewrite 本身；固定工作流继续导出改写后的结果。
-        context.visualRegressionError = formatRuntimeError(error);
-        reportAgentProgress(context, "visual-regression:ignored-error", {
-          error: context.visualRegressionError,
-        });
-      }
 
       return action;
     }

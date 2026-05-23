@@ -2,9 +2,9 @@ import { HumanMessage } from "@langchain/core/messages";
 import type { ChatOpenAI } from "@langchain/openai";
 
 import {
-  rewriteResultSchema,
-  type RewriteResult,
-} from "../interfaces/rewriteResult.js";
+  htmlCssResultSchema,
+  type HtmlCssResult,
+} from "../interfaces/htmlCssResult.js";
 import { rewriteHtmlSystemPrompt } from "../prompts/rewrite.js";
 import type { VisualRepairContext } from "../runtime/loop.js";
 import { compactHtmlForPrompt } from "../runtime/utils/htmlPrompt.js";
@@ -18,7 +18,7 @@ export interface RewriteHtmlInput {
 }
 
 export interface RewriteHtmlOutput {
-  result: RewriteResult;
+  result: HtmlCssResult;
 }
 
 function buildRewriteInstruction(
@@ -30,7 +30,7 @@ function buildRewriteInstruction(
     "",
     "===== 本步任务 =====",
     "请基于上文的视觉上下文（baseline/current/diff 三张图），",
-    "按下面的结构化修复计划修改当前 Tailwind HTML 片段。",
+    "按下面的结构化修复计划修改当前 Tailwind HTML 片段，并直接导出最终 html + css。",
     "",
     "## 结构化修复计划",
     repairPatchesJson,
@@ -44,8 +44,8 @@ export async function rewriteHtml(
   llm: ChatOpenAI,
   input: RewriteHtmlInput
 ): Promise<RewriteHtmlOutput> {
-  const structuredLlm = llm.withStructuredOutput(rewriteResultSchema, {
-    name: "RewriteResult",
+  const structuredLlm = llm.withStructuredOutput(htmlCssResultSchema, {
+    name: "HtmlCssResult",
     strict: true,
   });
 
