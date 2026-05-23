@@ -9,10 +9,7 @@ export function sanitizeHtmlCssResult(
   const nextCss = result.css.trim();
 
   if (!nextHtml || !nextHtml.startsWith("<")) {
-    return {
-      html: context.previousHtml,
-      css: "",
-    };
+    throw new Error("rewrite 输出的 html 不是有效 HTML 片段");
   }
 
   const previousDataIds = extractDataIds(context.previousHtml);
@@ -22,10 +19,7 @@ export function sanitizeHtmlCssResult(
   );
 
   if (!keepsAllDataIds) {
-    return {
-      html: context.previousHtml,
-      css: nextCss,
-    };
+    throw new Error("rewrite 输出缺失原始 HTML 中的 data-id");
   }
 
   return {

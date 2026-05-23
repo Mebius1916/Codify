@@ -1,7 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
-import { visualDiff, type AgentProgressEvent } from '@codify/agent'
+import { runVisualRepair, type AgentProgressEvent } from '@codify/agent'
 import { randomUUID } from 'node:crypto'
-import { env } from '../../config/env.ts'
 import { LoggingService } from '../../logging/loggingService.ts'
 import { RenderService } from '../../render/renderService.ts'
 import type { ConvertFigmaDto } from '../dto/convertFigmaDto.ts'
@@ -60,7 +59,7 @@ export class FigmaAiEnhanceService {
 
       const abortController = new AbortController()
       const result = await this.withTimeout(
-        visualDiff({
+        runVisualRepair({
           baselinePngBase64,
           currentPngBase64: buffer.toString('base64'),
           html: currentHtml,
@@ -69,10 +68,6 @@ export class FigmaAiEnhanceService {
           baseUrl: input.dto.aiOptions.baseUrl.trim(),
           temperature: input.dto.aiOptions.temperature ?? 0,
           threshold: 0.1,
-          renderEndpoint: env.renderEndpoint,
-          targetSimilarity: 0.9,
-          viewportWidth: viewport.width,
-          viewportHeight: viewport.height,
           onProgress: (event) => {
             events.push(event)
             if (this.shouldLogAgentEvent(event.event)) {

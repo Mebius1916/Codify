@@ -1,22 +1,11 @@
-import { PNG } from "pngjs";
 import { createLLM } from "./llm/createLLM.js";
 import { diffPng } from "./utils/diffPng.js";
-import type {
-  RunVisualRepairParams,
-  VisualDiffParams,
-  VisualRegressionConfig,
-} from "./interfaces/runtime.js";
+import type { RunVisualRepairInput, RunVisualRepairParams } from "./interfaces/runtime.js";
 import { runVisualRepairLoop } from "./runtime/loop.js";
 
 export type { AgentProgressEvent } from "./interfaces/runtime.js";
 
-// 从 PNG base64 中解析出真实的宽高，避免调用方手动传入导致与 baseline 尺寸错位
-function readPngSize(base64: string): { width: number; height: number } {
-  const { width, height } = PNG.sync.read(Buffer.from(base64, "base64"));
-  return { width, height };
-}
-
-export function visualDiff(params: VisualDiffParams) {
+export function runVisualRepair(params: RunVisualRepairInput) {
   const {
     baselinePngBase64,
     currentPngBase64,
@@ -26,25 +15,11 @@ export function visualDiff(params: VisualDiffParams) {
     baseUrl,
     temperature,
     threshold,
-    renderEndpoint,
-    targetSimilarity,
-    viewportWidth,
-    viewportHeight,
     onProgress,
     abortSignal,
   } = params;
 
   const diff = diffPng(baselinePngBase64, currentPngBase64, threshold);
-
-  // 视口默认对齐到 baseline 真实尺寸，保证 rewrite 后重新渲染出来的截图也能与 baseline 做像素级 diff
-  const baselineSize = readPngSize(baselinePngBase64);
-  const visualRegression: VisualRegressionConfig = {
-    renderEndpoint: renderEndpoint ?? "http://localhost:3001/api/render/html",
-    targetSimilarity: targetSimilarity ?? 0.95,
-    viewportWidth: viewportWidth ?? baselineSize.width,
-    viewportHeight: viewportHeight ?? baselineSize.height,
-    diffThreshold: threshold,
-  };
 
   const runParams = {
     baselinePngBase64,
@@ -56,7 +31,6 @@ export function visualDiff(params: VisualDiffParams) {
     apiKey,
     baseUrl,
     temperature,
-    visualRegression,
     onProgress,
     abortSignal,
   } satisfies RunVisualRepairParams;
