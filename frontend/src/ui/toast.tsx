@@ -39,8 +39,35 @@ const ToastTitle = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Title>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title>
 >(({ className, ...props }, ref) => (
-  <ToastPrimitives.Title ref={ref} className={cn("text-xs font-medium font-['Inter']", className)} {...props} />
+  <ToastPrimitives.Title ref={ref} className={cn("text-sm font-semibold leading-5 font-['Inter']", className)} {...props} />
 ))
 ToastTitle.displayName = ToastPrimitives.Title.displayName
 
-export { ToastProvider, ToastViewport, Toast, ToastTitle }
+const ToastDescription = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Description>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Description>
+>(({ className, ...props }, ref) => (
+  <ToastPrimitives.Description
+    ref={ref}
+    className={cn("text-xs leading-5 font-['Inter']", className)}
+    {...props}
+  />
+))
+ToastDescription.displayName = ToastPrimitives.Description.displayName
+
+const ToastClose = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Close>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Close>
+>(({ className, ...props }, ref) => (
+  <ToastPrimitives.Close
+    ref={ref}
+    className={cn(
+      'rounded-md p-1 text-current/60 transition-colors hover:bg-white/10 hover:text-current focus:outline-none focus:ring-1 focus:ring-white/30',
+      className,
+    )}
+    {...props}
+  />
+))
+ToastClose.displayName = ToastPrimitives.Close.displayName
+
+export { ToastProvider, ToastViewport, Toast, ToastTitle, ToastDescription, ToastClose }

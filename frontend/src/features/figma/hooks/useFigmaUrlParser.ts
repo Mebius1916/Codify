@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useUiStore } from '@/features/workspace/store/uiStore';
 import { convertFigma } from '../services/figma';
 import type { FigmaConvertResult } from '../interfaces/model';
+import { showToast } from '@/ui/appToast';
 
 type FigmaUrlParserState =
   | { status: 'idle' }
@@ -56,6 +57,7 @@ export function useFigmaUrlParser() {
       return result;
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : '链接格式无效，请输入完整的 Figma URL';
+      showToast({ message: errorMsg, variant: 'error' });
       setState({ status: 'error', error: errorMsg });
       return null;
     }

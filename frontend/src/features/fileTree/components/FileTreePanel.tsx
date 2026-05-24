@@ -10,6 +10,7 @@ import { NewFileItem } from './NewFileItem'
 import { FileTreeHeader } from './FileTreeHeader'
 import downloadIconUrl from '@assets/Download.svg'
 import { downloadAllFilesAsZip } from '../utils/downloadAll'
+import { showToast } from '@/ui/appToast'
 
 type FileTreeActions = ReturnType<typeof useFileTreeActions>
 
@@ -54,6 +55,8 @@ export function FileTreePanel({ actions, showHeader }: FileTreePanelProps) {
       const { files, fileKeys } = useEditorStore.getState()
       await downloadAllFilesAsZip({ files, fileKeys, zipName: 'project.zip' })
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Download failed'
+      showToast({ message, variant: 'error' })
       console.error(error)
     } finally {
       setIsDownloading(false)
