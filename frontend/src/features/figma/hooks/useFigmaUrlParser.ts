@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useUiStore } from '@/features/workspace/store/uiStore';
 import { convertFigma } from '../services/figma';
-import type { FigmaConvertResult } from '../interfaces/model';
+import type { ConvertStageEvent, FigmaConvertResult } from '../interfaces/model';
 import { showToast } from '@/ui/appToast';
 
 type FigmaUrlParserState =
   | { status: 'idle' }
-  | { status: 'loading' }
+  | { status: 'loading'; stage?: ConvertStageEvent }
   | { status: 'success'; data: FigmaConvertResult }
   | { status: 'error'; error: string };
 
@@ -45,6 +45,7 @@ export function useFigmaUrlParser() {
         figmaUrl: inputUrl,
         token,
         aiEnhance,
+        onStage: (stage) => setState({ status: 'loading', stage }),
         aiOptions: aiEnhance
           ? {
               baseUrl: modelApiEndpoint.trim(),

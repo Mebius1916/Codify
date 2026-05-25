@@ -22,3 +22,19 @@ export interface FigmaConvertResult {
     }>
   }
 }
+
+export type ConvertStage =
+  | 'figma_fetch'
+  | 'codegen'
+  | 'render_baseline'
+  | 'render_current'
+  | 'observe'
+  | 'plan'
+  | 'rewrite'
+  | 'completed'
+  | 'failed'
+
+export interface ConvertStageEvent {
+  stage: ConvertStage
+  label: string
+}

@@ -2,6 +2,7 @@ import figmaIconUrl from '@assets/Figma.svg';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useFigmaUrlParser } from '@/features/figma/hooks/useFigmaUrlParser';
+import { ConvertStageMiniStatus } from '@/features/figma/components/ConvertStageMiniStatus';
 import { runConvertFlow } from '@/features/figma/services/runConvertFlow';
 
 export function SearchBox() {
@@ -9,6 +10,7 @@ export function SearchBox() {
   const { state, parse, clearError } = useFigmaUrlParser();
   const [url, setUrl] = useState('');
   const isLoading = state.status === 'loading';
+  const stage = state.status === 'loading' ? state.stage : undefined;
   const error = state.status === 'error' ? state.error : null;
 
   const handleConvert = async () => {
@@ -57,6 +59,11 @@ export function SearchBox() {
           </button>
         </div>
       </div>
+      {isLoading && (
+        <div className="mt-2">
+          <ConvertStageMiniStatus stage={stage} />
+        </div>
+      )}
     </div>
   );
 }

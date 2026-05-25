@@ -5,13 +5,7 @@ import { Toast, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastVi
 import { cn } from '@/utils/cn'
 
 const APP_TOAST_EVENT = 'app-toast'
-const DEBUG_TOAST_DURATION_MS = 2_147_483_647
-const DEBUG_INITIAL_TOAST: AppToast = {
-  id: 1,
-  title: '请求失败',
-  message: '接口请求失败，请稍后重试',
-  variant: 'error',
-}
+const TOAST_DURATION_MS = 5000
 
 type AppToastVariant = 'default' | 'success' | 'error'
 
@@ -60,7 +54,7 @@ export function showToast(detail: AppToastDetail) {
 }
 
 export function AppToaster() {
-  const [toast, setToast] = useState<AppToast | null>(DEBUG_INITIAL_TOAST)
+  const [toast, setToast] = useState<AppToast | null>(null)
 
   useEffect(() => {
     const onToast = (event: Event) => {
@@ -90,7 +84,7 @@ export function AppToaster() {
             <Toast
               key={toast.id}
               open
-              duration={DEBUG_TOAST_DURATION_MS}
+              duration={TOAST_DURATION_MS}
               onOpenChange={(open) => {
                 if (!open) setToast(null)
               }}

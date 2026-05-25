@@ -1,5 +1,7 @@
 import localforage from 'localforage'
-import type { FigmaConvertResult } from '../interfaces/model'
+import type { ConvertStageEvent, FigmaConvertResult } from '../interfaces/model'
+import { createConvertResultCacheKey } from '../utils/convertCache'
+import { readConvertStream } from '../utils/convertStream'
 
 const convertResultCache = localforage.createInstance({ name: 'figma-convert-result-cache' })
 
@@ -7,6 +9,7 @@ interface ConvertFigmaOptions {
   figmaUrl: string
   token: string
   aiEnhance?: boolean
+  onStage?: (event: ConvertStageEvent) => void
   aiOptions?: {
     model: string
     apiKey: string
@@ -14,31 +17,27 @@ interface ConvertFigmaOptions {
   }
 }
 
-function createConvertResultCacheKey(input: ConvertFigmaOptions): string {
-  return JSON.stringify({
-    figmaUrl: input.figmaUrl.trim(),
-    aiEnhance: Boolean(input.aiEnhance),
-    model: input.aiEnhance ? input.aiOptions?.model.trim() : '',
-    baseUrl: input.aiEnhance ? input.aiOptions?.baseUrl.trim() : '',
-  })
-}
-
 export async function convertFigma({
   figmaUrl,
   token,
   aiEnhance,
+  onStage,
   aiOptions,
 }: ConvertFigmaOptions): Promise<FigmaConvertResult> {
-  const cacheKey = createConvertResultCacheKey({ figmaUrl, token, aiEnhance, aiOptions })
+  const cacheKey = createConvertResultCacheKey({ figmaUrl, aiEnhance, aiOptions })
   const cachedResult = await convertResultCache.getItem<string>(cacheKey)
   if (cachedResult) {
+    onStage?.({ stage: 'completed', label: '已读取转换缓存' })
     return JSON.parse(cachedResult) as FigmaConvertResult
   }
 
   const baseUrl = import.meta.env.VITE_BACKEND_URL?.trim();
   const resp = await fetch(`${baseUrl}/api/figma/convert`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/x-ndjson',
+    },
     body: JSON.stringify({
       figmaUrl,
       token,
@@ -48,13 +47,10 @@ export async function convertFigma({
   })
 
   if (!resp.ok) {
-    const payload = await resp.json().catch(() => ({}))
-    const message = payload && typeof payload === 'object' && 'message' in payload
-      ? payload.message
-      : `Figma 转换失败: ${resp.status} ${resp.statusText}`
-    throw new Error(Array.isArray(message) ? message.join(', ') : String(message))
+    throw new Error(`Figma 转换失败: ${resp.status} ${resp.statusText}`)
   }
-  const result = await resp.json() as FigmaConvertResult
+
+  const result = await readConvertStream(resp, onStage)
   if (result.aiEnhanceMeta?.status !== 'failed') {
     await convertResultCache.setItem(cacheKey, JSON.stringify(result))
   }

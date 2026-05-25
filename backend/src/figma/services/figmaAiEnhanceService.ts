@@ -5,9 +5,10 @@ import { LoggingService } from '../../logging/loggingService.ts'
 import { RenderService } from '../../render/renderService.ts'
 import type { ConvertFigmaDto } from '../dto/convertFigmaDto.ts'
 import { FigmaApiClient } from './figmaApiClient.ts'
+import type { ConvertProgressReporter } from './figmaProgress.ts'
 import type { AiEnhanceResult, CodegenResult, FigmaNodeRef } from '../types/figmaTypes.ts'
 
-const FIGMA_AI_ENHANCE_TIMEOUT_MS = 3 * 60_000
+const FIGMA_AI_ENHANCE_TIMEOUT_MS = 5 * 60_000
 const LOGGABLE_AGENT_EVENT_SUFFIXES = [':done', ':error', ':ignored-error']
 
 function readPngSize(base64: string): { width: number; height: number } {
@@ -31,9 +32,25 @@ export class FigmaAiEnhanceService {
     nodeRef: FigmaNodeRef
     token: string
     codegenResult: CodegenResult
+    convertProgress: ConvertProgressReporter
   }): Promise<AiEnhanceResult> {
     const runId = randomUUID()
     const events: AgentProgressEvent[] = []
+    // agent 日志
+    const handleAgentProgress = (event: AgentProgressEvent) => {
+      events.push(event)
+      input.convertProgress.reportAgent(event)
+      if (LOGGABLE_AGENT_EVENT_SUFFIXES.some((suffix) => event.event.endsWith(suffix))) {
+        this.loggingService.info('AI enhance agent progress', {
+          runId,
+          module: 'figma',
+          source: 'agent',
+          event: event.event,
+          details: event.details,
+        })
+      }
+    }
+
     try {
       if (!input.dto.aiOptions?.apiKey?.trim()) throw new BadRequestException('AI enhance 缺少 apiKey')
 
@@ -45,9 +62,11 @@ export class FigmaAiEnhanceService {
         model: input.dto.aiOptions.model?.trim(),
         nodeId: input.nodeRef.nodeId,
       })
+      input.convertProgress.report('render_baseline')
       const baselinePngBase64 = await this.figmaApiClient.fetchFigmaRenderPngBase64(input.nodeRef, input.token)
       const viewport = readPngSize(baselinePngBase64)
       const currentHtml = this.buildRenderableHtml(input.codegenResult)
+      input.convertProgress.report('render_current')
       const { buffer } = await this.renderService.renderHtmlToImage({
         html: currentHtml,
         width: viewport.width,
@@ -68,18 +87,7 @@ export class FigmaAiEnhanceService {
           baseUrl: input.dto.aiOptions.baseUrl.trim(),
           temperature: input.dto.aiOptions.temperature ?? 0,
           threshold: 0.1,
-          onProgress: (event) => {
-            events.push(event)
-            if (this.shouldLogAgentEvent(event.event)) {
-              this.loggingService.info('AI enhance agent progress', {
-                runId,
-                module: 'figma',
-                source: 'agent',
-                event: event.event,
-                details: event.details,
-              })
-            }
-          },
+          onProgress: handleAgentProgress,
           abortSignal: abortController.signal,
         }),
         FIGMA_AI_ENHANCE_TIMEOUT_MS,
@@ -155,7 +163,4 @@ export class FigmaAiEnhanceService {
     return String(error)
   }
 
-  private shouldLogAgentEvent(event: string): boolean {
-    return LOGGABLE_AGENT_EVENT_SUFFIXES.some((suffix) => event.endsWith(suffix))
-  }
 }

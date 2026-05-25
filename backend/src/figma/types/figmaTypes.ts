@@ -12,6 +12,22 @@ export interface FigmaNodeRef {
   nodeId: string
 }
 
+export type ConvertProgressStage =
+  | 'figma_fetch'
+  | 'codegen'
+  | 'render_baseline'
+  | 'render_current'
+  | 'observe'
+  | 'plan'
+  | 'rewrite'
+  | 'completed'
+  | 'failed'
+
+export interface ConvertProgressEvent {
+  stage: ConvertProgressStage
+  label: string
+}
+
 export interface AiEnhanceResult {
   result?: { html: string; css: string }
   meta: {

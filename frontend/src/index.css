@@ -147,3 +147,132 @@
     transform: translate(-50%, -52%) scale(0.98);
   }
 }
+
+.convert-stage-ambient {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(79, 107, 255, 0.18), transparent 28%),
+    radial-gradient(circle at 92% 18%, rgba(34, 197, 94, 0.08), transparent 24%),
+    linear-gradient(110deg, transparent 0%, transparent 42%, rgba(255, 255, 255, 0.055) 50%, transparent 58%, transparent 100%);
+  background-size: 100% 100%, 100% 100%, 240% 100%;
+  animation: convertStageAmbient 3s ease-in-out infinite;
+}
+
+.convert-stage-bar {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  transform: translateX(-100%);
+  animation: convertStageBar 1.5s ease-in-out infinite;
+}
+
+.convert-stage-pulse {
+  box-shadow: 0 0 0 0 rgba(111, 133, 255, 0.5);
+  animation: convertStagePulse 1.7s ease-out infinite;
+}
+
+.convert-stage-copy-enter {
+  animation: convertStageCopyEnter 260ms ease-out both;
+}
+
+.convert-stage-swap {
+  animation: convertStageSwap 300ms ease-out both;
+}
+
+.convert-runtime-grid {
+  background:
+    radial-gradient(circle at center, rgba(79, 107, 255, 0.12), transparent 38%),
+    linear-gradient(rgba(111, 133, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(111, 133, 255, 0.08) 1px, transparent 1px);
+  background-size: 100% 100%, 28px 28px, 28px 28px;
+}
+
+.convert-runtime-scan {
+  background: linear-gradient(90deg, transparent, rgba(111, 133, 255, 0.72), transparent);
+  animation: convertRuntimeScan 2s ease-in-out infinite;
+}
+
+.convert-runtime-core::before {
+  position: absolute;
+  inset: -18px;
+  border-radius: 28px;
+  border: 1px solid rgba(111, 133, 255, 0.18);
+  content: "";
+  animation: convertRuntimeCore 2.4s ease-in-out infinite;
+}
+
+@keyframes convertStageAmbient {
+  from {
+    background-position: 0 0, 0 0, 170% 0;
+  }
+  to {
+    background-position: 0 0, 0 0, -170% 0;
+  }
+}
+
+@keyframes convertStageBar {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes convertStageCopyEnter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes convertStageSwap {
+  from {
+    opacity: 0.65;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes convertRuntimeScan {
+  0% {
+    opacity: 0;
+    transform: translateY(-68px);
+  }
+  18%,
+  82% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(68px);
+  }
+}
+
+@keyframes convertRuntimeCore {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes convertStagePulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(111, 133, 255, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(111, 133, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(111, 133, 255, 0);
+  }
+}
