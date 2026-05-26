@@ -12,6 +12,11 @@ export const htmlCssResultSchema = z.object({
   css: z.string().refine((value) => !styleTagPattern.test(value), {
     message: "css must not contain style tags",
   }),
+  removedDataIds: z.array(z.string()).default([]),
 });
 
-export type HtmlCssResult = z.infer<typeof htmlCssResultSchema>;
+export interface HtmlCssResult {
+  html: string;
+  css: string;
+  removedDataIds?: string[];
+}

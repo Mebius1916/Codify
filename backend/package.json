@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "nodemon --watch src --ext ts --exec \"node --experimental-specifier-resolution=node --loader ts-node/esm src/main.ts\"",
+    "dev": "pnpm --filter @codify/agent build && pnpm run dev:watch",
+    "dev:watch": "nodemon --watch src --watch ../agent/dist --ext ts,js,json --exec \"node --experimental-specifier-resolution=node --loader ts-node/esm src/main.ts\"",
     "build": "tsc --noEmit",
     "start": "node --experimental-specifier-resolution=node --loader ts-node/esm src/main.ts"
   },

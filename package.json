@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n backend,frontend \"pnpm --filter @codify/backend dev\" \"pnpm --filter @codify/frontend dev\"",
+    "dev": "pnpm --filter @codify/agent build && concurrently -n agent,backend,frontend \"pnpm --filter @codify/agent dev\" \"pnpm --filter @codify/backend dev:watch\" \"pnpm --filter @codify/frontend dev\"",
     "build": "pnpm --filter @codify/agent build && pnpm --filter @codify/backend build && pnpm --filter @codify/frontend build",
     "start": "concurrently -n backend,frontend \"pnpm --filter @codify/backend start\" \"pnpm --filter @codify/frontend start\"",
     "lint": "pnpm --filter @codify/frontend lint",
-    "dev:all": "concurrently -n backend,frontend \"pnpm --filter @codify/backend dev\" \"pnpm --filter @codify/frontend dev\""
+    "dev:all": "pnpm dev"
   },
   "devDependencies": {
     "@types/node": "^25.0.3",

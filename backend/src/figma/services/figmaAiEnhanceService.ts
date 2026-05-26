@@ -8,7 +8,7 @@ import { FigmaApiClient } from './figmaApiClient.ts'
 import type { ConvertProgressReporter } from './figmaProgress.ts'
 import type { AiEnhanceResult, CodegenResult, FigmaNodeRef } from '../types/figmaTypes.ts'
 
-const FIGMA_AI_ENHANCE_TIMEOUT_MS = 5 * 60_000
+const FIGMA_AI_ENHANCE_TIMEOUT_MS = 10 * 60_000
 const LOGGABLE_AGENT_EVENT_SUFFIXES = [':done', ':error', ':ignored-error']
 
 function readPngSize(base64: string): { width: number; height: number } {
