@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import headerIconUrl from '@assets/Icon.svg'
 import { AlertTriangle, CheckCircle2, Info, X } from 'lucide-react'
-import { Toast, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from './toast'
+import { Toast, ToastClose, ToastProvider, ToastViewport } from './toast'
 import { cn } from '@/utils/cn'
+import { Alert, AlertDescription, AlertTitle } from './alert'
 
 const APP_TOAST_EVENT = 'app-toast'
 const TOAST_DURATION_MS = 5000
@@ -23,21 +23,18 @@ type AppToast = AppToastDetail & {
 
 const toastTone = {
   default: {
-    button: 'bg-[#1337EC] hover:bg-[#1337EC]/90',
-    iconWrap: 'border-[#1337EC]/20 bg-[#1337EC]/10',
-    icon: 'text-[#8EA2FF]',
+    icon: 'text-blue-300',
+    alert: 'border-[#2A2F4C] bg-[#101727] text-[#E5E7EB]',
   },
   success: {
-    button: 'bg-[#1337EC] hover:bg-[#1337EC]/90',
-    iconWrap: 'border-emerald-500/20 bg-emerald-500/10',
-    icon: 'text-emerald-400',
+    icon: 'text-emerald-300',
+    alert: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-100',
   },
   error: {
-    button: 'bg-[#1337EC] hover:bg-[#1337EC]/90',
-    iconWrap: 'border-red-500/20 bg-red-500/10',
-    icon: 'text-red-400',
+    icon: 'text-red-300',
+    alert: 'border-red-500/45 bg-red-500/10 text-red-100',
   },
-} satisfies Record<AppToastVariant, Record<'button' | 'iconWrap' | 'icon', string>>
+} satisfies Record<AppToastVariant, Record<'icon' | 'alert', string>>
 
 const toastIcon = {
   default: Info,
@@ -88,43 +85,23 @@ export function AppToaster() {
               onOpenChange={(open) => {
                 if (!open) setToast(null)
               }}
-              className="w-[min(calc(100vw-32px),420px)] flex-col items-stretch gap-0 overflow-hidden rounded-xl border-[#2A2F4C] bg-[#1A1E32] p-0 text-[#E5E7EB] shadow-2xl outline outline-1 -outline-offset-1 outline-[#2A2F4C]"
+              className="gap-0 border-none bg-transparent p-0 shadow-none"
             >
-              <div className="flex w-full items-center justify-between border-b border-[#2A2F4C] bg-[#15182A]/50 px-5 py-4">
-                <div className="flex items-center gap-2">
-                  <img src={headerIconUrl} alt="" className="size-[17px]" />
-                  <ToastTitle className="text-sm font-semibold leading-5 text-white">
-                    {toast.title ?? (toast.variant === 'error' ? 'System Message' : 'System Message')}
-                  </ToastTitle>
-                </div>
+              <Alert className={cn('pr-10 shadow-lg', toastTone[toast.variant].alert)}>
+                <StatusIcon className={cn('absolute left-4 top-4 size-4', toastTone[toast.variant].icon)} />
                 <ToastClose
                   aria-label="Close"
-                  className="rounded-md p-1 text-[#9CA3AF] hover:bg-white/5 hover:text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                  className="absolute right-3 top-3 rounded-md p-1 text-current/60 hover:bg-white/5 hover:text-current focus:outline-none focus:ring-1 focus:ring-white/20"
                 >
-                  <X className="size-3.5" />
+                  <X className="size-4" />
                 </ToastClose>
-              </div>
-
-              <div className="flex w-full flex-col items-center px-6 py-8">
-                <div className={cn('mb-4 flex size-12 items-center justify-center rounded-full border', toastTone[toast.variant].iconWrap)}>
-                  <StatusIcon className={cn('size-6', toastTone[toast.variant].icon)} />
-                </div>
-                <ToastDescription className="max-w-[310px] text-center text-sm font-normal leading-[22px] text-[#D1D5DB]">
+                <AlertTitle className="pl-7 text-sm font-medium leading-5">
+                  {toast.title ?? (toast.variant === 'error' ? 'Action failed' : toast.variant === 'success' ? 'Completed' : 'System update')}
+                </AlertTitle>
+                <AlertDescription className="pl-7 text-xs leading-5 text-current/80">
                   {toast.message}
-                </ToastDescription>
-              </div>
-
-              <div className="flex w-full justify-end border-t border-[#2A2F4C] bg-[#15182A]/50 px-5 py-4">
-                <ToastClose
-                  aria-label={toast.actionLabel ?? 'Confirm'}
-                  className={cn(
-                    'flex h-8 items-center justify-center rounded-md px-5 text-xs font-bold leading-4 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-[#1337EC]/40',
-                    toastTone[toast.variant].button,
-                  )}
-                >
-                  {toast.actionLabel ?? 'Confirm'}
-                </ToastClose>
-              </div>
+                </AlertDescription>
+              </Alert>
             </Toast>
           )
         })()

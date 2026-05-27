@@ -27,22 +27,17 @@ export function reportAgentProgress(
 export async function runWithAgentProgress<T>(
   context: VisualRepairContext,
   event: string,
-  details: Record<string, unknown>,
   task: () => Promise<T>,
   getResultDetails?: (result: T) => Record<string, unknown>
 ): Promise<T> {
   const startedAt = Date.now();
   throwIfAgentAborted(context);
-  reportAgentProgress(context, event, {
-    ...details,
-    status: "start",
-  });
+  reportAgentProgress(context, event, { status: "start" });
 
   try {
     const result = await task();
     throwIfAgentAborted(context);
     reportAgentProgress(context, event, {
-      ...details,
       ...getResultDetails?.(result),
       status: "done",
       durationMs: Date.now() - startedAt,
@@ -50,7 +45,6 @@ export async function runWithAgentProgress<T>(
     return result;
   } catch (error) {
     reportAgentProgress(context, event, {
-      ...details,
       status: "error",
       durationMs: Date.now() - startedAt,
       error: formatRuntimeError(error),

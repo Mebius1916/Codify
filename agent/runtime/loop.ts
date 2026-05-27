@@ -40,7 +40,6 @@ export async function runVisualRepairLoop(
   const { observation } = await runWithAgentProgress(
     context,
     "observe",
-    { diffRatio: params.diffRatio },
     () =>
       observeVisualDiff(llm, {
         context,
@@ -54,7 +53,6 @@ export async function runVisualRepairLoop(
   const { patches } = await runWithAgentProgress(
     context,
     "plan",
-    {},
     () =>
       planVisualRepair(llm, {
         context,
@@ -71,7 +69,6 @@ export async function runVisualRepairLoop(
   const { result } = await runWithAgentProgress(
     context,
     "rewrite",
-    {},
     () => runRewriteStep(llm, context, repairPatchesJson, params.rewriteTimeoutMs),
     ({ result }) => ({ output: result }),
   );
