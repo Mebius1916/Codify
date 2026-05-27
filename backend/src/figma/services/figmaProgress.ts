@@ -34,7 +34,7 @@ export function createConvertProgressReporter(onProgress?: ProgressSink): Conver
   return {
     report,
     reportAgent(event) {
-      const stage = event.event.split(':')[0] as ConvertProgressStage
+      const stage = event.event as ConvertProgressStage
       if (!AGENT_PROGRESS_STAGES.has(stage) || reportedAgentStages.has(stage)) return
 
       reportedAgentStages.add(stage)

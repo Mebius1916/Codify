@@ -17,6 +17,7 @@ export function createLLM(params: CreateLLMParams): BaseChatModel {
     temperature: params.temperature,
     thinkingConfig: {
       includeThoughts: false,
+      thinkingLevel: "LOW"
     },
   });
 }

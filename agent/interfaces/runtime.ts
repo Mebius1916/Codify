@@ -13,6 +13,7 @@ export interface RunVisualRepairParams {
   apiKey: string;
   baseUrl: string;
   temperature: number;
+  rewriteTimeoutMs?: number;
   onProgress?: (event: AgentProgressEvent) => void;
   abortSignal?: AbortSignal;
 }
@@ -26,6 +27,7 @@ export interface RunVisualRepairInput {
   baseUrl: string;
   temperature: number;
   threshold: number;
+  rewriteTimeoutMs?: number;
   onProgress?: (event: AgentProgressEvent) => void;
   abortSignal?: AbortSignal;
 }

@@ -33,20 +33,25 @@ export async function runWithAgentProgress<T>(
 ): Promise<T> {
   const startedAt = Date.now();
   throwIfAgentAborted(context);
-  reportAgentProgress(context, `${event}:start`, details);
+  reportAgentProgress(context, event, {
+    ...details,
+    status: "start",
+  });
 
   try {
     const result = await task();
     throwIfAgentAborted(context);
-    reportAgentProgress(context, `${event}:done`, {
+    reportAgentProgress(context, event, {
       ...details,
       ...getResultDetails?.(result),
+      status: "done",
       durationMs: Date.now() - startedAt,
     });
     return result;
   } catch (error) {
-    reportAgentProgress(context, `${event}:error`, {
+    reportAgentProgress(context, event, {
       ...details,
+      status: "error",
       durationMs: Date.now() - startedAt,
       error: formatRuntimeError(error),
     });

@@ -5,8 +5,8 @@ import type { RepairPatch } from "../interfaces/repairPatch.js";
 import type { RunVisualRepairParams } from "../interfaces/runtime.js";
 import { observeVisualDiff } from "../steps/observeVisualDiff.js";
 import { planVisualRepair } from "../steps/planVisualRepair.js";
-import { rewriteHtml } from "../steps/rewriteHtml.js";
 import { runWithAgentProgress } from "./utils/progress.js";
+import { runRewriteStep } from "./utils/rewriteStep.js";
 
 export interface VisualRepairContext {
   input: RunVisualRepairParams;
@@ -51,11 +51,10 @@ export async function runVisualRepairLoop(
 
   context.observation = observation;
 
-  const planReason = "固定工作流：观察后生成一轮修复计划。";
   const { patches } = await runWithAgentProgress(
     context,
     "plan",
-    { reason: planReason },
+    {},
     () =>
       planVisualRepair(llm, {
         context,
@@ -69,17 +68,11 @@ export async function runVisualRepairLoop(
   const repairPatchesJson = JSON.stringify(context.repairPatches ?? [], null, 2);
 
   // patch 只作为结构化计划，真正的改写仍交给 AI 执行。
-  const rewriteReason = "固定工作流：按修复计划执行一次改写并产出最终 html + css。";
   const { result } = await runWithAgentProgress(
     context,
     "rewrite",
-    { reason: rewriteReason },
-    () =>
-      rewriteHtml(llm, {
-        context,
-        repairPatchesJson,
-        currentHtml: context.currentHtml,
-      }),
+    {},
+    () => runRewriteStep(llm, context, repairPatchesJson, params.rewriteTimeoutMs),
     ({ result }) => ({ output: result }),
   );
   context.currentHtml = result.html;

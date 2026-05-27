@@ -29,17 +29,20 @@ export function buildVisualContextMessage(
         type: "text",
         text: [
           "下面三张图是本次视觉回归任务的共享视觉上下文：",
-          "1) baseline —— Figma 设计稿渲染图，视为唯一真理，永远保持不变",
-          "2) current  —— 当前 HTML 渲染出来的截图",
-          "3) diff     —— current 与 baseline 的像素级差异图，高亮处 = 差异位置",
+          "baseline 是 Figma 设计稿渲染图，视为唯一真理，永远保持不变",
+          "current 是当前 HTML 渲染出来的截图",
+          "diff 是 current 与 baseline 的像素级差异图，高亮处 = 差异位置",
           roundDesc,
           metrics,
         ]
           .filter(Boolean)
           .join("\n"),
       },
+      { type: "text", text: "baseline image:" },
       { type: "image_url", image_url: { url: toPngDataUrl(input.baselinePngBase64) } },
+      { type: "text", text: "current image:" },
       { type: "image_url", image_url: { url: toPngDataUrl(input.currentPngBase64) } },
+      { type: "text", text: "diff image:" },
       { type: "image_url", image_url: { url: toPngDataUrl(input.diffPngBase64) } },
     ],
   });

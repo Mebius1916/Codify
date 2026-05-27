@@ -28,12 +28,12 @@ function buildRewriteInstruction(
     rewriteHtmlSystemPrompt,
     "",
     "===== 本步任务 =====",
-    "请按下面的结构化修复计划修改当前 Tailwind HTML 片段，并直接导出最终 html + css。",
+    "请根据下面的结构化修复计划和参考代码，直接生成最终 html + css。",
     "",
     "## 结构化修复计划",
     repairPatchesJson,
     "",
-    "## 当前 Tailwind HTML 片段",
+    "## 参考代码",
     currentHtml,
   ].join("\n");
 }

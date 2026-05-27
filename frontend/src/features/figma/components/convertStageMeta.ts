@@ -6,7 +6,7 @@ import {
   Eye,
   FileSearch,
   Layers3,
-  Loader2,
+  ListChecks,
   Sparkles,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
@@ -25,7 +25,7 @@ export const CONVERT_STAGE_ITEMS: ConvertStageMeta[] = [
   { stage: 'render_baseline', title: 'Baseline Capture', shortLabel: 'Base', Icon: Camera },
   { stage: 'render_current', title: 'Preview Render', shortLabel: 'Render', Icon: Layers3 },
   { stage: 'observe', title: 'Visual Check', shortLabel: 'Observe', Icon: Eye },
-  { stage: 'plan', title: 'Repair Planning', shortLabel: 'Plan', Icon: Loader2 },
+  { stage: 'plan', title: 'Repair Planning', shortLabel: 'Plan', Icon: ListChecks },
   { stage: 'rewrite', title: 'AI Polish', shortLabel: 'Polish', Icon: Sparkles },
   { stage: 'completed', title: 'Ready', shortLabel: 'Done', Icon: Check },
 ]
