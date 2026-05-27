@@ -1,10 +1,10 @@
 import { HumanMessage } from "@langchain/core/messages";
-import type { ChatOpenAI } from "@langchain/openai";
 
 import {
   observeResultSchema,
   type ObserveResult,
 } from "../interfaces/observeResult.js";
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import {
   buildObserveVisualDiffUserText,
   observeVisualDiffSystemPrompt,
@@ -32,7 +32,7 @@ function buildObserveInstruction(input: ObserveVisualDiffPromptInput): string {
 }
 
 export async function observeVisualDiff(
-  llm: ChatOpenAI,
+  llm: BaseChatModel,
   input: ObserveVisualDiffInput
 ): Promise<ObserveVisualDiffOutput> {
   const structuredLlm = llm.withStructuredOutput(observeResultSchema, {
@@ -46,7 +46,6 @@ export async function observeVisualDiff(
   const observation = await structuredLlm.invoke([...projected, instruction], {
     signal: input.context.input.abortSignal,
   });
-  const sanitized = sanitizers.observe(observation);
-
+  const sanitized = sanitizers.observe(observeResultSchema.parse(observation));
   return { observation: sanitized };
 }

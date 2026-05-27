@@ -1,11 +1,11 @@
 import { HumanMessage } from "@langchain/core/messages";
-import type { ChatOpenAI } from "@langchain/openai";
 
 import type { ObserveResult } from "../interfaces/observeResult.js";
 import {
   repairPatchListSchema,
   type RepairPatch,
 } from "../interfaces/repairPatch.js";
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { planVisualRepairSystemPrompt } from "../prompts/plan.js";
 import type { VisualRepairContext } from "../runtime/loop.js";
 import { compactHtmlForPrompt } from "../runtime/utils/htmlPrompt.js";
@@ -47,7 +47,7 @@ function buildPlanInstruction(
 }
 
 export async function planVisualRepair(
-  llm: ChatOpenAI,
+  llm: BaseChatModel,
   input: PlanVisualRepairInput
 ): Promise<PlanVisualRepairOutput> {
   // 约束大模型的输出
@@ -66,7 +66,9 @@ export async function planVisualRepair(
   const rawPatches = await structuredLlm.invoke([...projected, instruction], {
     signal: input.context.input.abortSignal,
   });
-  const patches = sanitizers.plan(rawPatches, { currentHtml: input.currentHtml });
+  const patches = sanitizers.plan(repairPatchListSchema.parse(rawPatches), {
+    currentHtml: input.currentHtml,
+  });
 
   return { patches };
 }

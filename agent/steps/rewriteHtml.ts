@@ -1,10 +1,10 @@
 import { HumanMessage } from "@langchain/core/messages";
-import type { ChatOpenAI } from "@langchain/openai";
 
 import {
   htmlCssResultSchema,
   type HtmlCssResult,
 } from "../interfaces/htmlCssResult.js";
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { rewriteHtmlSystemPrompt } from "../prompts/rewrite.js";
 import type { VisualRepairContext } from "../runtime/loop.js";
 import { compactHtmlForPrompt } from "../runtime/utils/htmlPrompt.js";
@@ -39,7 +39,7 @@ function buildRewriteInstruction(
 }
 
 export async function rewriteHtml(
-  llm: ChatOpenAI,
+  llm: BaseChatModel,
   input: RewriteHtmlInput
 ): Promise<RewriteHtmlOutput> {
   const structuredLlm = llm.withStructuredOutput(htmlCssResultSchema, {
@@ -55,7 +55,7 @@ export async function rewriteHtml(
   const rawResult = await structuredLlm.invoke([instruction], {
     signal: input.context.input.abortSignal,
   });
-  const result = sanitizers.rewrite(rawResult, {
+  const result = sanitizers.rewrite(htmlCssResultSchema.parse(rawResult), {
     previousHtml: input.currentHtml,
   });
 

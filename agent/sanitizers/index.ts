@@ -18,6 +18,7 @@ export const sanitizers = {
     sanitizeRepairPatches(payload, context),
 
   rewrite: (payload: HtmlCssResult, context: SanitizerContext) =>
-    sanitizeHtmlCssResult(payload, { previousHtml: context.previousHtml ?? "" }),
-
+    sanitizeHtmlCssResult(payload, {
+      previousHtml: context.previousHtml ?? "",
+    }),
 };

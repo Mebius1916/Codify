@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const repairPatchSchema = z.object({
-  dataId: z.string().min(1),
+  target: z.string().min(1),
   change: z.string().min(1),
   reason: z.string().min(1),
 });

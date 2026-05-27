@@ -1,6 +1,5 @@
-import type { ChatOpenAI } from "@langchain/openai";
-
 import type { HtmlCssResult } from "../interfaces/htmlCssResult.js";
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { ObserveResult } from "../interfaces/observeResult.js";
 import type { RepairPatch } from "../interfaces/repairPatch.js";
 import type { RunVisualRepairParams } from "../interfaces/runtime.js";
@@ -23,7 +22,7 @@ export interface VisualRepairContext {
 }
 
 export async function runVisualRepairLoop(
-  llm: ChatOpenAI,
+  llm: BaseChatModel,
   params: RunVisualRepairParams,
 ): Promise<HtmlCssResult> {
   // 维护固定工作流里的结构化 handoff state；messages 由当前步骤现场投影。
