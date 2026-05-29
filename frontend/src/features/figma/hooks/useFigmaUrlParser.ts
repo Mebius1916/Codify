@@ -15,12 +15,14 @@ export function useFigmaUrlParser() {
   const {
     figmaToken,
     aiEnhance,
+    useConvertCache,
     modelApiEndpoint,
     modelApiKey,
     modelName,
   } = useUiStore((s) => ({
     figmaToken: s.figmaToken,
     aiEnhance: s.aiEnhance,
+    useConvertCache: s.useConvertCache,
     modelApiEndpoint: s.modelApiEndpoint,
     modelApiKey: s.modelApiKey,
     modelName: s.modelName,
@@ -45,6 +47,7 @@ export function useFigmaUrlParser() {
         figmaUrl: inputUrl,
         token,
         aiEnhance,
+        useConvertCache,
         onStage: (stage) => setState({ status: 'loading', stage }),
         aiOptions: aiEnhance
           ? {

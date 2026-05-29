@@ -1,6 +1,6 @@
 import type { HtmlCssResult } from "../interfaces/htmlCssResult.js";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
-import type { ObserveResult } from "../interfaces/observeResult.js";
+import type { ObserveFinding } from "../interfaces/observeFinding.js";
 import type { RepairPatch } from "../interfaces/repairPatch.js";
 import type { RunVisualRepairParams } from "../interfaces/runtime.js";
 import { observeVisualDiff } from "../steps/observeVisualDiff.js";
@@ -17,7 +17,7 @@ export interface VisualRepairContext {
   currentPngBase64: string;
   diffPngBase64: string;
   diffRatio: number;
-  observation?: ObserveResult;
+  observeFindings?: ObserveFinding[];
   repairPatches?: RepairPatch[];
 }
 
@@ -37,18 +37,17 @@ export async function runVisualRepairLoop(
     diffRatio: params.diffRatio,
   };
 
-  const { observation } = await runWithAgentProgress(
+  const { findings } = await runWithAgentProgress(
     context,
     "observe",
     () =>
       observeVisualDiff(llm, {
         context,
-        diffRatio: params.diffRatio,
+        currentHtml: context.currentHtml,
       }),
-    ({ observation }) => ({ output: observation }),
+    ({ findings }) => ({ output: { findings } }),
   );
-
-  context.observation = observation;
+  context.observeFindings = findings;
 
   const { patches } = await runWithAgentProgress(
     context,
@@ -57,11 +56,12 @@ export async function runVisualRepairLoop(
       planVisualRepair(llm, {
         context,
         currentHtml: context.currentHtml,
+        findings: context.observeFindings ?? [],
       }),
     ({ patches }) => ({ output: { patches } }),
   );
+  context.observeFindings = undefined;
   context.repairPatches = patches;
-  context.observation = undefined;
 
   const repairPatchesJson = JSON.stringify(context.repairPatches ?? [], null, 2);
 

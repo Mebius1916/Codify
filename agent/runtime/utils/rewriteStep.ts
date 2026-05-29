@@ -45,6 +45,7 @@ export function runRewriteStep(
   const rewritePromise = rewriteHtml(llm, {
     context: rewriteContext,
     repairPatchesJson,
+    repairPatches: context.repairPatches,
     currentHtml: context.currentHtml,
   });
 

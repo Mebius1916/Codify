@@ -12,7 +12,7 @@ export const CONVERT_PROGRESS_LABELS = {
   codegen: '转换算法运行中',
   render_baseline: '正在生成 Figma 基准截图',
   render_current: '正在生成当前页面截图',
-  observe: '视觉分析中',
+  observe: '正在观察视觉差异',
   plan: '正在生成修复计划',
   rewrite: 'AI 优化中',
   completed: '转换完成',

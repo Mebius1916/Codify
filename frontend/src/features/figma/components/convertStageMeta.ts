@@ -3,7 +3,6 @@ import {
   Braces,
   Camera,
   Check,
-  Eye,
   FileSearch,
   Layers3,
   ListChecks,
@@ -24,8 +23,8 @@ export const CONVERT_STAGE_ITEMS: ConvertStageMeta[] = [
   { stage: 'codegen', title: 'Code Generation', shortLabel: 'Code', Icon: Braces },
   { stage: 'render_baseline', title: 'Baseline Capture', shortLabel: 'Base', Icon: Camera },
   { stage: 'render_current', title: 'Preview Render', shortLabel: 'Render', Icon: Layers3 },
-  { stage: 'observe', title: 'Visual Check', shortLabel: 'Observe', Icon: Eye },
-  { stage: 'plan', title: 'Repair Planning', shortLabel: 'Plan', Icon: ListChecks },
+  { stage: 'observe', title: 'Observe', shortLabel: 'Observe', Icon: ListChecks },
+  { stage: 'plan', title: 'Plan', shortLabel: 'Plan', Icon: ListChecks },
   { stage: 'rewrite', title: 'AI Polish', shortLabel: 'Polish', Icon: Sparkles },
   { stage: 'completed', title: 'Ready', shortLabel: 'Done', Icon: Check },
 ]

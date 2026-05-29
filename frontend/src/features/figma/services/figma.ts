@@ -9,6 +9,7 @@ interface ConvertFigmaOptions {
   figmaUrl: string
   token: string
   aiEnhance?: boolean
+  useConvertCache?: boolean
   onStage?: (event: ConvertStageEvent) => void
   aiOptions?: {
     model: string
@@ -21,14 +22,17 @@ export async function convertFigma({
   figmaUrl,
   token,
   aiEnhance,
+  useConvertCache = true,
   onStage,
   aiOptions,
 }: ConvertFigmaOptions): Promise<FigmaConvertResult> {
   const cacheKey = createConvertResultCacheKey({ figmaUrl, aiEnhance, aiOptions })
-  const cachedResult = await convertResultCache.getItem<string>(cacheKey)
-  if (cachedResult) {
-    onStage?.({ stage: 'completed', label: '已读取转换缓存' })
-    return JSON.parse(cachedResult) as FigmaConvertResult
+  if (useConvertCache) {
+    const cachedResult = await convertResultCache.getItem<string>(cacheKey)
+    if (cachedResult) {
+      onStage?.({ stage: 'completed', label: '已读取转换缓存' })
+      return JSON.parse(cachedResult) as FigmaConvertResult
+    }
   }
 
   const baseUrl = import.meta.env.VITE_BACKEND_URL?.trim();
@@ -51,7 +55,7 @@ export async function convertFigma({
   }
 
   const result = await readConvertStream(resp, onStage)
-  if (result.aiEnhanceMeta?.status !== 'failed') {
+  if (useConvertCache && result.aiEnhanceMeta?.status !== 'failed') {
     await convertResultCache.setItem(cacheKey, JSON.stringify(result))
   }
   return result

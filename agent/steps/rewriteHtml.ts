@@ -4,15 +4,18 @@ import {
   htmlCssResultSchema,
   type HtmlCssResult,
 } from "../interfaces/htmlCssResult.js";
+import type { RepairPatch } from "../interfaces/repairPatch.js";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { rewriteHtmlSystemPrompt } from "../prompts/rewrite.js";
 import type { VisualRepairContext } from "../runtime/loop.js";
 import { compactHtmlForPrompt } from "../runtime/utils/htmlPrompt.js";
+import { toLLMMessages } from "../runtime/utils/llmContext.js";
 import { sanitizers } from "../sanitizers/index.js";
 
 export interface RewriteHtmlInput {
   context: VisualRepairContext;
   repairPatchesJson: string;
+  repairPatches?: RepairPatch[];
   currentHtml: string;
 }
 
@@ -51,12 +54,14 @@ export async function rewriteHtml(
   const instruction = new HumanMessage(
     buildRewriteInstruction(input.repairPatchesJson, promptHtml)
   );
+  const projected = toLLMMessages(input.context);
 
-  const rawResult = await structuredLlm.invoke([instruction], {
+  const rawResult = await structuredLlm.invoke([...projected, instruction], {
     signal: input.context.input.abortSignal,
   });
   const result = sanitizers.rewrite(htmlCssResultSchema.parse(rawResult), {
     previousHtml: input.currentHtml,
+    repairPatches: input.repairPatches,
   });
 
   return { result };

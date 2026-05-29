@@ -1,33 +1,33 @@
 import { HumanMessage } from "@langchain/core/messages";
-
-import {
-  observeResultSchema,
-  type ObserveResult,
-} from "../interfaces/observeResult.js";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
-import {
-  buildObserveVisualDiffUserText,
-  observeVisualDiffSystemPrompt,
-  type ObserveVisualDiffPromptInput,
-} from "../prompts/observe.js";
-import type { VisualRepairContext } from "../runtime/loop.js";
-import { toLLMMessages } from "../runtime/utils/llmContext.js";
-import { sanitizers } from "../sanitizers/index.js";
 
-export interface ObserveVisualDiffInput extends ObserveVisualDiffPromptInput {
+import {
+  observeFindingListSchema,
+  type ObserveFinding,
+} from "../interfaces/observeFinding.js";
+import { observeVisualSystemPrompt } from "../prompts/observe.js";
+import type { VisualRepairContext } from "../runtime/loop.js";
+import { compactHtmlForPrompt } from "../runtime/utils/htmlPrompt.js";
+import { toLLMMessages } from "../runtime/utils/llmContext.js";
+
+export interface ObserveVisualDiffInput {
   context: VisualRepairContext;
+  currentHtml: string;
 }
 
 export interface ObserveVisualDiffOutput {
-  observation: ObserveResult;
+  findings: ObserveFinding[];
 }
 
-function buildObserveInstruction(input: ObserveVisualDiffPromptInput): string {
+function buildObserveInstruction(currentHtml: string): string {
   return [
-    observeVisualDiffSystemPrompt,
+    observeVisualSystemPrompt,
     "",
     "===== 本步任务 =====",
-    buildObserveVisualDiffUserText(input),
+    "请基于三张视觉上下文图和下面的当前参考代码，只输出结构化 findings。",
+    "",
+    "## 当前参考代码",
+    currentHtml,
   ].join("\n");
 }
 
@@ -35,17 +35,25 @@ export async function observeVisualDiff(
   llm: BaseChatModel,
   input: ObserveVisualDiffInput
 ): Promise<ObserveVisualDiffOutput> {
-  const structuredLlm = llm.withStructuredOutput(observeResultSchema, {
-    name: "ObserveResult",
+  const structuredLlm = llm.withStructuredOutput(observeFindingListSchema, {
+    name: "ObserveFindingList",
     strict: true,
   });
 
-  const instruction = new HumanMessage(buildObserveInstruction(input));
-
+  const promptHtml = await compactHtmlForPrompt(input.currentHtml);
+  const instruction = new HumanMessage(buildObserveInstruction(promptHtml));
   const projected = toLLMMessages(input.context);
-  const observation = await structuredLlm.invoke([...projected, instruction], {
+
+  const rawFindings = await structuredLlm.invoke([...projected, instruction], {
     signal: input.context.input.abortSignal,
   });
-  const sanitized = sanitizers.observe(observeResultSchema.parse(observation));
-  return { observation: sanitized };
+
+  const findings = observeFindingListSchema.parse(rawFindings).map((finding) => ({
+    ...finding,
+    category: finding.category.trim(),
+    target: finding.target.trim(),
+    evidence: finding.evidence.trim(),
+  })).filter((finding) => finding.category && finding.target && finding.evidence);
+
+  return { findings };
 }

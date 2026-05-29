@@ -44,6 +44,8 @@ export function WorkspaceSettingsModal({
     setModelNameDraft,
     aiEnhanceDraft,
     setAiEnhanceDraft,
+    useConvertCacheDraft,
+    setUseConvertCacheDraft,
     figmaTokenDraft,
     setFigmaTokenDraft,
     figmaTokenInputRef,
@@ -105,8 +107,10 @@ export function WorkspaceSettingsModal({
                   inputRef={figmaTokenInputRef}
                   token={figmaTokenDraft}
                   invalid={figmaTokenInvalid}
+                  useConvertCache={useConvertCacheDraft}
                   maskedTextStyle={maskedTextStyle}
                   onTokenChange={setFigmaTokenDraft}
+                  onUseConvertCacheChange={setUseConvertCacheDraft}
                   onTouched={setFigmaTokenTouched}
                 />
 

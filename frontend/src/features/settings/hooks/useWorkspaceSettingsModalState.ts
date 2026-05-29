@@ -19,22 +19,26 @@ export function useWorkspaceSettingsModalState({
     modelApiKey,
     modelName,
     aiEnhance,
+    useConvertCache,
     figmaToken,
     setModelApiEndpoint,
     setModelApiKey,
     setModelName,
     setAiEnhance,
+    setUseConvertCache,
     setFigmaToken,
   } = useUiStore((state) => ({
     modelApiEndpoint: state.modelApiEndpoint,
     modelApiKey: state.modelApiKey,
     modelName: state.modelName,
     aiEnhance: state.aiEnhance,
+    useConvertCache: state.useConvertCache,
     figmaToken: state.figmaToken,
     setModelApiEndpoint: state.setModelApiEndpoint,
     setModelApiKey: state.setModelApiKey,
     setModelName: state.setModelName,
     setAiEnhance: state.setAiEnhance,
+    setUseConvertCache: state.setUseConvertCache,
     setFigmaToken: state.setFigmaToken,
   }))
 
@@ -44,6 +48,7 @@ export function useWorkspaceSettingsModalState({
   const [apiKey, setApiKey] = useState(modelApiKey)
   const [modelNameDraft, setModelNameDraft] = useState(modelName)
   const [aiEnhanceDraft, setAiEnhanceDraft] = useState(aiEnhance)
+  const [useConvertCacheDraft, setUseConvertCacheDraft] = useState(useConvertCache)
   const [figmaTokenDraft, setFigmaTokenDraft] = useState(figmaToken)
 
   const [figmaTokenTouched, setFigmaTokenTouched] = useState(false)
@@ -61,6 +66,7 @@ export function useWorkspaceSettingsModalState({
     setApiKey(modelApiKey)
     setModelNameDraft(modelName)
     setAiEnhanceDraft(aiEnhance)
+    setUseConvertCacheDraft(useConvertCache)
     setFigmaTokenDraft(figmaToken)
 
     const shouldHighlightToken = Boolean(highlightFigmaToken) && !figmaToken.trim()
@@ -95,6 +101,7 @@ export function useWorkspaceSettingsModalState({
     modelApiKey,
     modelName,
     open,
+    useConvertCache,
   ])
 
   const handleSave = () => {
@@ -102,6 +109,7 @@ export function useWorkspaceSettingsModalState({
     setModelApiKey(apiKey)
     setModelName(modelNameDraft)
     setAiEnhance(aiEnhanceDraft)
+    setUseConvertCache(useConvertCacheDraft)
     setFigmaToken(figmaTokenDraft)
     onClose()
   }
@@ -125,6 +133,8 @@ export function useWorkspaceSettingsModalState({
 
     aiEnhanceDraft,
     setAiEnhanceDraft,
+    useConvertCacheDraft,
+    setUseConvertCacheDraft,
 
     figmaTokenDraft,
     setFigmaTokenDraft,

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
 import { runVisualRepair, type AgentProgressEvent } from '@codify/agent'
 import { randomUUID } from 'node:crypto'
+import { convertHtmlCssToTailwind } from '../../../../converters/index.ts'
 import { LoggingService } from '../../logging/loggingService.ts'
 import { RenderService } from '../../render/renderService.ts'
 import type { ConvertFigmaDto } from '../dto/convertFigmaDto.ts'
@@ -10,6 +11,7 @@ import type { AiEnhanceResult, CodegenResult, ConvertProgressStage, FigmaNodeRef
 
 const FIGMA_AI_REWRITE_TIMEOUT_MS = 3 * 60_000
 const LOGGABLE_AGENT_STATUSES = new Set(['start', 'done', 'error', 'ignored-error'])
+const LOGGABLE_TAILWIND_FRAGMENT_MAX_LENGTH = 20_000
 
 type AiEnhanceStage = 'render_baseline' | 'render_current' | 'agent_visual_repair'
 
@@ -74,7 +76,28 @@ export class FigmaAiEnhanceService {
         this.figmaApiClient.fetchFigmaRenderPngBase64(input.nodeRef, input.token),
       )
       const viewport = readPngSize(baselinePngBase64)
-      const currentHtml = this.buildRenderableHtml(input.codegenResult)
+      const currentHtml = await (async () => {
+        try {
+          const htmlFragment = (input.codegenResult.body || input.codegenResult.html).trim()
+          const tailwindFragment = await convertHtmlCssToTailwind(htmlFragment, input.codegenResult.css)
+          this.loggingService.info('AI enhance tailwind conversion succeeded', {
+            runId,
+            module: 'figma',
+            source: 'backend',
+            currentHtmlLength: tailwindFragment.length,
+            tailwindFragment: this.toLoggableTailwindFragment(tailwindFragment),
+          })
+          return tailwindFragment
+        } catch (error) {
+          this.loggingService.error('AI enhance tailwind conversion failed, fallback to raw html+css', {
+            runId,
+            module: 'figma',
+            source: 'backend',
+            error: this.formatError(error),
+          })
+          return '';
+        }
+      })()
       const { buffer } = await stage.run('render_current', () =>
         this.renderService.renderHtmlToImage({
           html: currentHtml,
@@ -132,14 +155,6 @@ export class FigmaAiEnhanceService {
     }
   }
 
-  private buildRenderableHtml(result: CodegenResult): string {
-    if (!result.css.trim()) return result.html
-    if (/<\/head>/i.test(result.html)) {
-      return result.html.replace(/<\/head>/i, `<style>${result.css}</style></head>`)
-    }
-    return `<style>${result.css}</style>${result.html}`
-  }
-
   private createAiEnhanceStageReporter(
     runId: string,
     convertProgress: ConvertProgressReporter,
@@ -180,6 +195,11 @@ export class FigmaAiEnhanceService {
   private formatError(error: unknown): string {
     if (error instanceof Error) return error.message
     return String(error)
+  }
+
+  private toLoggableTailwindFragment(fragment: string): string {
+    if (fragment.length <= LOGGABLE_TAILWIND_FRAGMENT_MAX_LENGTH) return fragment
+    return `${fragment.slice(0, LOGGABLE_TAILWIND_FRAGMENT_MAX_LENGTH)}...[truncated]`
   }
 
 }

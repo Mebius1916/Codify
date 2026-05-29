@@ -13,6 +13,7 @@ interface UiState {
   modelApiKey: string
   modelName: string
   aiEnhance: boolean
+  useConvertCache: boolean
   figmaToken: string
 
   setPreviewContentSize: (size: PreviewContentSize | null) => void
@@ -20,6 +21,7 @@ interface UiState {
   setModelApiKey: (key: string) => void
   setModelName: (model: string) => void
   setAiEnhance: (enabled: boolean) => void
+  setUseConvertCache: (enabled: boolean) => void
   setFigmaToken: (token: string) => void
 }
 
@@ -41,6 +43,7 @@ export const useUiStore = create<UiState>()(
       modelApiKey: '',
       modelName: 'gpt-4o',
       aiEnhance: false,
+      useConvertCache: true,
       figmaToken: '',
 
       setPreviewContentSize: (size: PreviewContentSize | null) => {
@@ -63,6 +66,10 @@ export const useUiStore = create<UiState>()(
         set({ aiEnhance: enabled })
       },
 
+      setUseConvertCache: (enabled: boolean) => {
+        set({ useConvertCache: enabled })
+      },
+
       setFigmaToken: (token: string) => {
         set({ figmaToken: token })
       },
@@ -78,6 +85,7 @@ export const useUiStore = create<UiState>()(
         modelApiKey: state.modelApiKey,
         modelName: state.modelName,
         aiEnhance: state.aiEnhance,
+        useConvertCache: state.useConvertCache,
         figmaToken: state.figmaToken,
       }),
     }
