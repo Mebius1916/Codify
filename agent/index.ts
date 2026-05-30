@@ -14,7 +14,7 @@ export function runVisualRepair(params: RunVisualRepairInput) {
     apiKey,
     baseUrl,
     temperature,
-    rewriteTimeoutMs,
+    timeout,
     threshold,
     onProgress,
     abortSignal,
@@ -32,7 +32,7 @@ export function runVisualRepair(params: RunVisualRepairInput) {
     apiKey,
     baseUrl,
     temperature,
-    rewriteTimeoutMs,
+    timeout,
     onProgress,
     abortSignal,
   } satisfies RunVisualRepairParams;
@@ -42,6 +42,7 @@ export function runVisualRepair(params: RunVisualRepairInput) {
     apiKey,
     baseUrl,
     temperature,
+    timeout,
   });
 
   return runVisualRepairLoop(llm, runParams);

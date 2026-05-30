@@ -25,7 +25,7 @@ export const CONVERT_STAGE_ITEMS: ConvertStageMeta[] = [
   { stage: 'render_current', title: 'Preview Render', shortLabel: 'Render', Icon: Layers3 },
   { stage: 'observe', title: 'Observe', shortLabel: 'Observe', Icon: ListChecks },
   { stage: 'plan', title: 'Plan', shortLabel: 'Plan', Icon: ListChecks },
-  { stage: 'rewrite', title: 'AI Polish', shortLabel: 'Polish', Icon: Sparkles },
+  { stage: 'rewrite', title: 'Rewrite', shortLabel: 'Rewrite', Icon: Sparkles },
   { stage: 'completed', title: 'Ready', shortLabel: 'Done', Icon: Check },
 ]
 

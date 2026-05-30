@@ -1,58 +1,62 @@
 import { HumanMessage } from "@langchain/core/messages";
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 
 import {
   htmlCssResultSchema,
   type HtmlCssResult,
 } from "../interfaces/htmlCssResult.js";
-import type { RepairPatch } from "../interfaces/repairPatch.js";
-import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
-import { rewriteHtmlSystemPrompt } from "../prompts/rewrite.js";
+import { polishHtmlSystemPrompt } from "../prompts/polish.js";
 import type { VisualRepairContext } from "../runtime/loop.js";
-import { compactHtmlForPrompt } from "../runtime/utils/htmlPrompt.js";
 import { toLLMMessages } from "../runtime/utils/llmContext.js";
 import { sanitizers } from "../sanitizers/index.js";
 
-export interface RewriteHtmlInput {
+export interface PolishHtmlInput {
   context: VisualRepairContext;
-  repairPatchesJson: string;
-  repairPatches?: RepairPatch[];
   currentHtml: string;
+  currentCss: string;
 }
 
-export interface RewriteHtmlOutput {
+export interface PolishHtmlOutput {
   result: HtmlCssResult;
 }
 
-function buildRewriteInstruction(
-  repairPatchesJson: string,
-  currentHtml: string
+function buildPolishInstruction(
+  figmaDescription: string,
+  currentHtml: string,
+  currentCss: string,
 ): string {
   return [
-    rewriteHtmlSystemPrompt,
+    polishHtmlSystemPrompt,
     "",
     "===== 本步任务 =====",
-    "请根据下面的结构化修复计划和参考代码，直接生成最终 html + css。",
+    "请在不改变视觉结果与语义内容的前提下优化代码结构，输出最终 html + css。",
     "",
-    "## 结构化修复计划",
-    repairPatchesJson,
+    "## Figma 渲染图描述",
+    figmaDescription || "(empty)",
     "",
-    "## 参考代码",
+    "## 当前 HTML",
     currentHtml,
+    "",
+    "## 当前 CSS",
+    currentCss || "(empty)",
   ].join("\n");
 }
 
-export async function rewriteHtml(
+export async function polishHtml(
   llm: BaseChatModel,
-  input: RewriteHtmlInput
-): Promise<RewriteHtmlOutput> {
+  input: PolishHtmlInput
+): Promise<PolishHtmlOutput> {
   const structuredLlm = llm.withStructuredOutput(htmlCssResultSchema, {
     name: "HtmlCssResult",
     strict: true,
   });
 
-  const promptHtml = await compactHtmlForPrompt(input.currentHtml);
   const instruction = new HumanMessage(
-    buildRewriteInstruction(input.repairPatchesJson, promptHtml)
+    buildPolishInstruction(
+      input.context.observeFigmaDescription ?? "",
+      input.currentHtml,
+      input.currentCss,
+    )
   );
   const projected = toLLMMessages(input.context);
 
@@ -61,7 +65,6 @@ export async function rewriteHtml(
   });
   const result = sanitizers.rewrite(htmlCssResultSchema.parse(rawResult), {
     previousHtml: input.currentHtml,
-    repairPatches: input.repairPatches,
   });
 
   return { result };

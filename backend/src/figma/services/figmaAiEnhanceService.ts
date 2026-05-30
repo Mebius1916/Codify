@@ -9,8 +9,7 @@ import { FigmaApiClient } from './figmaApiClient.ts'
 import type { ConvertProgressReporter } from './figmaProgress.ts'
 import type { AiEnhanceResult, CodegenResult, ConvertProgressStage, FigmaNodeRef } from '../types/figmaTypes.ts'
 
-const FIGMA_AI_REWRITE_TIMEOUT_MS = 3 * 60_000
-const LOGGABLE_AGENT_STATUSES = new Set(['start', 'done', 'error', 'ignored-error'])
+const FIGMA_AI_LLM_TIMEOUT_MS = 1 * 60_000
 const LOGGABLE_TAILWIND_FRAGMENT_MAX_LENGTH = 20_000
 
 type AiEnhanceStage = 'render_baseline' | 'render_current' | 'agent_visual_repair'
@@ -41,6 +40,7 @@ export class FigmaAiEnhanceService {
     token: string
     codegenResult: CodegenResult
     convertProgress: ConvertProgressReporter
+    abortSignal?: AbortSignal
   }): Promise<AiEnhanceResult> {
     const runId = randomUUID()
     const startedAt = Date.now()
@@ -50,15 +50,19 @@ export class FigmaAiEnhanceService {
     const handleAgentProgress = (event: AgentProgressEvent) => {
       events.push(event)
       input.convertProgress.reportAgent(event)
-      if (LOGGABLE_AGENT_STATUSES.has(String(event.details?.status))) {
-        this.loggingService.info(`AI enhance agent ${event.event}`, {
-          runId,
-          module: 'figma',
-          source: 'agent',
-          agentEvent: event.event,
-          details: event.details,
-        })
+      const status = String(event.details?.status ?? '')
+      const payload = {
+        runId,
+        module: 'figma',
+        source: 'agent',
+        agentEvent: event.event,
+        details: event.details,
       }
+      if (status === 'error') {
+        this.loggingService.error(`AI enhance agent ${event.event}`, payload)
+        return
+      }
+      this.loggingService.info(`AI enhance agent ${event.event}`, payload)
     }
 
     try {
@@ -119,8 +123,9 @@ export class FigmaAiEnhanceService {
           baseUrl: aiOptions.baseUrl.trim(),
           temperature: aiOptions.temperature ?? 0,
           threshold: 0.1,
-          rewriteTimeoutMs: FIGMA_AI_REWRITE_TIMEOUT_MS,
+          timeout: FIGMA_AI_LLM_TIMEOUT_MS,
           onProgress: handleAgentProgress,
+          abortSignal: input.abortSignal,
         }),
       )
 

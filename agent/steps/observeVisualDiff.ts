@@ -2,8 +2,8 @@ import { HumanMessage } from "@langchain/core/messages";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 
 import {
-  observeFindingListSchema,
-  type ObserveFinding,
+  observeOutputSchema,
+  type ObserveGroup,
 } from "../interfaces/observeFinding.js";
 import { observeVisualSystemPrompt } from "../prompts/observe.js";
 import type { VisualRepairContext } from "../runtime/loop.js";
@@ -16,7 +16,9 @@ export interface ObserveVisualDiffInput {
 }
 
 export interface ObserveVisualDiffOutput {
-  findings: ObserveFinding[];
+  summary: string;
+  figmaDescription: string;
+  groups: ObserveGroup[];
 }
 
 function buildObserveInstruction(currentHtml: string): string {
@@ -24,7 +26,7 @@ function buildObserveInstruction(currentHtml: string): string {
     observeVisualSystemPrompt,
     "",
     "===== 本步任务 =====",
-    "请基于三张视觉上下文图和下面的当前参考代码，只输出结构化 findings。",
+    "请基于三张视觉上下文图和下面的当前参考代码，只输出结构化 groups。",
     "",
     "## 当前参考代码",
     currentHtml,
@@ -35,25 +37,36 @@ export async function observeVisualDiff(
   llm: BaseChatModel,
   input: ObserveVisualDiffInput
 ): Promise<ObserveVisualDiffOutput> {
-  const structuredLlm = llm.withStructuredOutput(observeFindingListSchema, {
-    name: "ObserveFindingList",
+  const structuredLlm = llm.withStructuredOutput(observeOutputSchema, {
+    name: "ObserveOutput",
     strict: true,
   });
 
   const promptHtml = await compactHtmlForPrompt(input.currentHtml);
   const instruction = new HumanMessage(buildObserveInstruction(promptHtml));
-  const projected = toLLMMessages(input.context);
+  const projected = toLLMMessages(input.context, { includeVisualContext: true });
 
-  const rawFindings = await structuredLlm.invoke([...projected, instruction], {
+  const rawGroups = await structuredLlm.invoke([...projected, instruction], {
     signal: input.context.input.abortSignal,
   });
 
-  const findings = observeFindingListSchema.parse(rawFindings).map((finding) => ({
-    ...finding,
-    category: finding.category.trim(),
-    target: finding.target.trim(),
-    evidence: finding.evidence.trim(),
-  })).filter((finding) => finding.category && finding.target && finding.evidence);
+  const parsed = observeOutputSchema.parse(rawGroups);
+  const summary = parsed.summary.trim();
+  const figmaDescription = parsed.figmaDescription.trim();
 
-  return { findings };
+  const groups = parsed.groups
+    .map((group) => ({
+      ...group,
+      dataIds: group.dataIds.map((dataId) => dataId.trim()).filter(Boolean),
+      observation: group.observation.trim(),
+      acceptance: group.acceptance.trim(),
+    }))
+    .filter(
+      (group) =>
+        group.dataIds.length >= 1 &&
+        group.observation &&
+        group.acceptance,
+    );
+
+  return { summary, figmaDescription, groups };
 }

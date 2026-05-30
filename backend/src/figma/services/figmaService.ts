@@ -21,14 +21,19 @@ export class FigmaService {
     private readonly figmaAiEnhanceService: FigmaAiEnhanceService,
   ) {}
 
-  convert(input: ConvertFigmaDto, onProgress?: ConvertProgressSink) {
+  convert(input: ConvertFigmaDto, onProgress?: ConvertProgressSink, abortSignal?: AbortSignal) {
     const convertProgress = createConvertProgressReporter(onProgress)
-    const task = this.convertQueue.then(() => this.runConvert(input, convertProgress))
+    const task = this.convertQueue.then(() => this.runConvert(input, convertProgress, abortSignal))
     this.convertQueue = task.then(() => undefined, () => undefined)
     return task
   }
 
-  private async runConvert(input: ConvertFigmaDto, convertProgress: ConvertProgressReporter) {
+  private async runConvert(
+    input: ConvertFigmaDto,
+    convertProgress: ConvertProgressReporter,
+    abortSignal?: AbortSignal,
+  ) {
+    abortSignal?.throwIfAborted()
     if (!input.figmaUrl?.trim()) throw new BadRequestException('请输入 figma url')
     if (!input.token?.trim()) throw new BadRequestException('请先填写 Figma Token')
 
@@ -53,6 +58,7 @@ export class FigmaService {
       token,
       codegenResult,
       convertProgress,
+      abortSignal,
     })
 
     return {

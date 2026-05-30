@@ -14,7 +14,7 @@ export const CONVERT_PROGRESS_LABELS = {
   render_current: '正在生成当前页面截图',
   observe: '正在观察视觉差异',
   plan: '正在生成修复计划',
-  rewrite: 'AI 优化中',
+  rewrite: '正在执行修复与优化',
   completed: '转换完成',
   failed: '转换失败',
 } satisfies Record<ConvertProgressStage, string>
@@ -34,11 +34,16 @@ export function createConvertProgressReporter(onProgress?: ProgressSink): Conver
   return {
     report,
     reportAgent(event) {
-      const stage = event.event as ConvertProgressStage
+      const stage = normalizeAgentStage(event.event)
       if (!AGENT_PROGRESS_STAGES.has(stage) || reportedAgentStages.has(stage)) return
 
       reportedAgentStages.add(stage)
       report(stage)
     },
   }
+}
+
+function normalizeAgentStage(rawEvent: string): ConvertProgressStage {
+  if (rawEvent === 'apply' || rawEvent === 'polish') return 'rewrite'
+  return rawEvent as ConvertProgressStage
 }

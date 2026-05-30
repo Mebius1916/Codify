@@ -1,24 +1,25 @@
 import type { HtmlCssResult } from "../interfaces/htmlCssResult.js";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
-import type { ObserveFinding } from "../interfaces/observeFinding.js";
-import type { RepairPatch } from "../interfaces/repairPatch.js";
+import type { ObserveGroup } from "../interfaces/observeFinding.js";
+import type { RepairPlanGroup } from "../interfaces/repairPatch.js";
 import type { RunVisualRepairParams } from "../interfaces/runtime.js";
 import { observeVisualDiff } from "../steps/observeVisualDiff.js";
 import { planVisualRepair } from "../steps/planVisualRepair.js";
 import { runWithAgentProgress } from "./utils/progress.js";
-import { runRewriteStep } from "./utils/rewriteStep.js";
+import { runApplyStep } from "./utils/applyStep.js";
+import { runPolishStep } from "./utils/polishStep.js";
 
 export interface VisualRepairContext {
   input: RunVisualRepairParams;
-  round: number;
-  rewriteRounds: number;
   currentHtml: string;
   currentCss: string;
   currentPngBase64: string;
   diffPngBase64: string;
   diffRatio: number;
-  observeFindings?: ObserveFinding[];
-  repairPatches?: RepairPatch[];
+  observeSummary?: string;
+  observeFigmaDescription?: string;
+  observeGroups?: ObserveGroup[];
+  repairPlanGroups?: { groups: RepairPlanGroup[] };
 }
 
 export async function runVisualRepairLoop(
@@ -28,8 +29,6 @@ export async function runVisualRepairLoop(
   // 维护固定工作流里的结构化 handoff state；messages 由当前步骤现场投影。
   const context: VisualRepairContext = {
     input: params,
-    round: 1,
-    rewriteRounds: 0,
     currentHtml: params.html,
     currentCss: "",
     currentPngBase64: params.currentPngBase64,
@@ -37,45 +36,67 @@ export async function runVisualRepairLoop(
     diffRatio: params.diffRatio,
   };
 
-  const { findings } = await runWithAgentProgress(
-    context,
-    "observe",
-    () =>
-      observeVisualDiff(llm, {
-        context,
-        currentHtml: context.currentHtml,
-      }),
-    ({ findings }) => ({ output: { findings } }),
-  );
-  context.observeFindings = findings;
+  const runWorkflow = async () => {
+    const { summary, figmaDescription, groups } = await runWithAgentProgress(
+      context,
+      "observe",
+      () =>
+        observeVisualDiff(llm, {
+          context,
+          currentHtml: context.currentHtml,
+        }),
+    );
+    context.observeSummary = summary;
+    context.observeFigmaDescription = figmaDescription;
+    context.observeGroups = groups;
 
-  const { patches } = await runWithAgentProgress(
-    context,
-    "plan",
-    () =>
-      planVisualRepair(llm, {
-        context,
-        currentHtml: context.currentHtml,
-        findings: context.observeFindings ?? [],
-      }),
-    ({ patches }) => ({ output: { patches } }),
-  );
-  context.observeFindings = undefined;
-  context.repairPatches = patches;
+    const { planGroups } = await runWithAgentProgress(
+      context,
+      "plan",
+      () =>
+        planVisualRepair(llm, {
+          context,
+          currentHtml: context.currentHtml,
+          groups: context.observeGroups ?? [],
+        }),
+    );
+    context.observeSummary = undefined;
+    context.observeFigmaDescription = undefined;
+    context.observeGroups = undefined;
+    context.repairPlanGroups = planGroups;
 
-  const repairPatchesJson = JSON.stringify(context.repairPatches ?? [], null, 2);
+    const repairPlanGroupsJson = JSON.stringify(
+      context.repairPlanGroups ?? { groups: [] },
+      null,
+      2,
+    );
 
-  // patch 只作为结构化计划，真正的改写仍交给 AI 执行。
-  const { result } = await runWithAgentProgress(
-    context,
-    "rewrite",
-    () => runRewriteStep(llm, context, repairPatchesJson, params.rewriteTimeoutMs),
-    ({ result }) => ({ output: result }),
-  );
+    const { result: applied } = await runWithAgentProgress(
+      context,
+      "apply",
+      () => runApplyStep(llm, context, repairPlanGroupsJson),
+    );
+    context.currentHtml = applied.html;
+    context.currentCss = "";
+
+    return runWithAgentProgress(
+      context,
+      "polish",
+      () => runPolishStep(llm, context),
+    );
+  };
+
+  const abortController = new AbortController();
+  const mergedSignal = context.input.abortSignal
+    ? AbortSignal.any([context.input.abortSignal, abortController.signal])
+    : abortController.signal;
+    
+  context.input.abortSignal = mergedSignal;
+
+  const { result } = await runWorkflow();
   context.currentHtml = result.html;
   context.currentCss = result.css;
-  context.repairPatches = undefined;
-  context.rewriteRounds += 1;
+  context.repairPlanGroups = undefined;
 
   return { html: context.currentHtml, css: context.currentCss };
 }

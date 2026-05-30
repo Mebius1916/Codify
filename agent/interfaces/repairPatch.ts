@@ -1,18 +1,19 @@
 import { z } from "zod";
+import { observeGroupPrioritySchema } from "./observeFinding.js";
 
-export const repairPatchTypeSchema = z.enum(["add", "remove", "update"]);
-export const repairPatchPrioritySchema = z.enum(["high", "medium", "low"]);
-const patchTargetPattern = /^data-id\s*=\s*(["']).+?\1$/;
-
-export const repairPatchSchema = z.object({
-  type: repairPatchTypeSchema,
-  priority: repairPatchPrioritySchema,
-  target: z.string().regex(patchTargetPattern, {
-    message: 'target must use format data-id="..."',
-  }),
-  change: z.string().min(1),
+export const repairPlanChangeItemSchema = z.object({
+  dataId: z.string().min(1),
+  action: z.string().min(1),
 });
 
-export const repairPatchListSchema = z.array(repairPatchSchema);
+export const repairPlanGroupSchema = z.object({
+  priority: observeGroupPrioritySchema,
+  dataIds: z.array(z.string().min(1)).min(2).max(12),
+  change: z.array(repairPlanChangeItemSchema).min(1).max(12),
+});
 
-export type RepairPatch = z.infer<typeof repairPatchSchema>;
+export const repairPlanGroupListSchema = z.object({
+  groups: z.array(repairPlanGroupSchema).max(6),
+});
+
+export type RepairPlanGroup = z.infer<typeof repairPlanGroupSchema>;

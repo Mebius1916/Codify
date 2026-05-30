@@ -1,22 +1,27 @@
-import type { RepairPatch } from "../interfaces/repairPatch.js";
+import type { RepairPlanGroup } from "../interfaces/repairPatch.js";
 
-const PRIORITY_RANK: Record<RepairPatch["priority"], number> = {
+const PRIORITY_RANK: Record<RepairPlanGroup["priority"], number> = {
   high: 0,
   medium: 1,
   low: 2,
 };
 
-export function sanitizeRepairPatches(
-  patches: RepairPatch[],
+export function sanitizeRepairPlanGroups(
+  groups: RepairPlanGroup[],
   _context: { currentHtml?: string; previousHtml?: string }
-): RepairPatch[] {
-  const normalized = patches
-    .map((patch) => ({
-      ...patch,
-      target: patch.target.trim(),
-      change: patch.change.trim(),
+): RepairPlanGroup[] {
+  const normalized = groups
+    .map((group) => ({
+      ...group,
+      dataIds: group.dataIds.map((dataId) => dataId.trim()).filter(Boolean),
+      change: group.change
+        .map((item) => ({
+          dataId: item.dataId.trim(),
+          action: item.action.trim(),
+        }))
+        .filter((item) => item.dataId && item.action),
     }))
-    .filter((patch) => patch.target !== "" && patch.change !== "");
+    .filter((group) => group.dataIds.length >= 2 && group.change.length > 0);
 
   return normalized
     .sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority])
