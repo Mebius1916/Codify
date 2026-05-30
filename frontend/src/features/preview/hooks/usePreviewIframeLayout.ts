@@ -4,6 +4,7 @@ type LayoutPayload = { scale: number; width: number; height: number } | null
 type PreviewLayoutMessage =
   | { type: 'preview:ready'; payload?: { bootId?: string | null } }
   | { type: 'preview:layout:applied'; payload?: { bootId?: string | null } }
+  | { type: 'preview:viewport'; payload?: { bootId?: string | null; zoomPercent?: number } }
 
 interface PreviewIframeLayoutOptions {
   iframeRef: RefObject<HTMLIFrameElement | null>
@@ -12,13 +13,21 @@ interface PreviewIframeLayoutOptions {
   previewFiles: Record<string, string>
 }
 
+type PreviewCommand = 'zoom-in' | 'zoom-out' | 'reset' | 'fit'
+
 function readLayoutMessage(data: unknown): PreviewLayoutMessage | null {
   if (!data || typeof data !== 'object') return null
-  const message = data as { type?: unknown; payload?: { bootId?: string | null } }
+  const message = data as {
+    type?: unknown
+    payload?: { bootId?: string | null; zoomPercent?: number }
+  }
   if (message.type === 'preview:ready') {
     return { type: message.type, payload: message.payload }
   }
   if (message.type === 'preview:layout:applied') {
+    return { type: message.type, payload: message.payload }
+  }
+  if (message.type === 'preview:viewport') {
     return { type: message.type, payload: message.payload }
   }
   return null
@@ -32,6 +41,7 @@ export function usePreviewIframeLayout({
 }: PreviewIframeLayoutOptions) {
   const [isFrameReady, setIsFrameReady] = useState(false)
   const [isLayoutReady, setIsLayoutReady] = useState(false)
+  const [zoomPercent, setZoomPercent] = useState(100)
   const readyRef = useRef(false) // 是否已经握手
   const bootIdRef = useRef<string | null>(null) // iframe 唯一标识
   const layoutPayloadRef = useRef<LayoutPayload>(layoutPayload) // 布局参数
@@ -66,6 +76,14 @@ export function usePreviewIframeLayout({
     )
   }
 
+  const postCommand = (command: PreviewCommand) => {
+    if (!readyRef.current) return
+    iframeRef.current?.contentWindow?.postMessage?.(
+      { type: 'preview:command', payload: { command, bootId: bootIdRef.current } },
+      '*',
+    )
+  }
+
   useEffect(() => {
     setIsFrameReady(false)
     setIsLayoutReady(false)
@@ -92,6 +110,16 @@ export function usePreviewIframeLayout({
         const bootId = message.payload?.bootId ?? null
         if (bootIdRef.current && bootId !== bootIdRef.current) return
         setIsLayoutReady(true)
+        return
+      }
+
+      if (message.type === 'preview:viewport') {
+        const bootId = message.payload?.bootId ?? null
+        if (bootIdRef.current && bootId !== bootIdRef.current) return
+        const nextZoom = message.payload?.zoomPercent
+        if (typeof nextZoom === 'number' && Number.isFinite(nextZoom) && nextZoom > 0) {
+          setZoomPercent(Math.round(nextZoom))
+        }
       }
     }
 
@@ -107,5 +135,5 @@ export function usePreviewIframeLayout({
     postLayout()
   }, [previewSrcDoc, layoutPayload])
 
-  return { isFrameReady, isLayoutReady }
+  return { isFrameReady, isLayoutReady, zoomPercent, postCommand }
 }

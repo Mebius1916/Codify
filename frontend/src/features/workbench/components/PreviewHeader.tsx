@@ -1,4 +1,5 @@
 import refreshIconUrl from '@assets/Refresh.svg'
+import { useUiStore } from '@/features/workspace/store/uiStore'
 
 interface PreviewHeaderProps {
   onRefresh?: () => void
@@ -7,10 +8,25 @@ interface PreviewHeaderProps {
 }
 
 export function PreviewHeader({ onRefresh, onFullscreenToggle, isFullscreen }: PreviewHeaderProps) {
+  const previewZoomPercent = useUiStore((state) => state.previewZoomPercent)
+
   return (
     <div className="flex items-center h-full px-3 w-full justify-between" style={{ backgroundColor: 'rgb(25, 30, 50)' }}>
       <h3 className="text-xs font-semibold text-gray-300 uppercase tracking-wider">PREVIEW</h3>
       <div className="flex items-center gap-2">
+        <div
+          className="h-7 flex items-center gap-2 px-2 rounded-md border border-[#2a2f4c] text-[11px] leading-none whitespace-nowrap"
+          title="缩放: Ctrl/⌘ + 滚轮；移动: Shift + 拖拽 或 中键拖拽"
+        >
+          <span className="text-gray-500">缩放</span>
+          <span className="text-gray-300">Ctrl/⌘ + 滚轮</span>
+          <span className="w-px h-3 bg-[#2a2f4c]" aria-hidden="true" />
+          <span className="text-gray-500">移动</span>
+          <span className="text-gray-300">Shift + 拖拽</span>
+        </div>
+        <div className="h-7 px-2 rounded-md border border-[#2a2f4c] text-[11px] leading-none text-gray-300 tabular-nums inline-flex items-center">
+          {previewZoomPercent}%
+        </div>
         <button
           onClick={onRefresh}
           className="w-7 h-7 rounded-md hover:bg-[#2a2f4c] transition-colors flex items-center justify-center"

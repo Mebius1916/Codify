@@ -9,6 +9,7 @@ interface PreviewContentSize {
 
 interface UiState {
   previewContentSize: PreviewContentSize | null
+  previewZoomPercent: number
   modelApiEndpoint: string
   modelApiKey: string
   modelName: string
@@ -17,6 +18,7 @@ interface UiState {
   figmaToken: string
 
   setPreviewContentSize: (size: PreviewContentSize | null) => void
+  setPreviewZoomPercent: (zoomPercent: number) => void
   setModelApiEndpoint: (endpoint: string) => void
   setModelApiKey: (key: string) => void
   setModelName: (model: string) => void
@@ -39,6 +41,7 @@ export const useUiStore = create<UiState>()(
   persist(
     (set: SetState<UiState>) => ({
       previewContentSize: null,
+      previewZoomPercent: 100,
       modelApiEndpoint: '',
       modelApiKey: '',
       modelName: 'gpt-4o',
@@ -48,6 +51,9 @@ export const useUiStore = create<UiState>()(
 
       setPreviewContentSize: (size: PreviewContentSize | null) => {
         set({ previewContentSize: size })
+      },
+      setPreviewZoomPercent: (zoomPercent: number) => {
+        set({ previewZoomPercent: zoomPercent })
       },
 
       setModelApiEndpoint: (endpoint: string) => {
@@ -81,6 +87,7 @@ export const useUiStore = create<UiState>()(
       // 只持久化部分字段，避免无关状态干扰
       partialize: (state) => ({
         previewContentSize: state.previewContentSize,
+        previewZoomPercent: state.previewZoomPercent,
         modelApiEndpoint: state.modelApiEndpoint,
         modelApiKey: state.modelApiKey,
         modelName: state.modelName,

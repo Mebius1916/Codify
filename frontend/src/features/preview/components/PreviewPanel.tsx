@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { useEditorStore } from '@/features/workspace/store/editorStore'
+import { useUiStore } from '@/features/workspace/store/uiStore'
 import { Loading } from '@/ui/Loading'
 import { useIframeScrollFocus } from '../hooks/useIframeScrollFocus'
 import { usePreviewIframeLayout } from '../hooks/usePreviewIframeLayout'
@@ -15,16 +17,21 @@ export function PreviewPanel({
   previewContentSize,
 }: PreviewPanelProps) {
   const previewFiles = useEditorStore((state) => state.files)
+  const setPreviewZoomPercent = useUiStore((state) => state.setPreviewZoomPercent)
   const { iframeRef, handleIframePointerDown, handleIframeClick } = useIframeScrollFocus()
   const { containerRef, containerSize } = useContainerSize<HTMLDivElement>()
   const layoutPayload = computeLayoutPayload(previewContentSize, containerSize)
 
-  const { isFrameReady, isLayoutReady } = usePreviewIframeLayout({
+  const { isFrameReady, isLayoutReady, zoomPercent } = usePreviewIframeLayout({
     iframeRef,
     previewSrcDoc: PREVIEW_SRC_DOC,
     layoutPayload,
     previewFiles,
   })
+
+  useEffect(() => {
+    setPreviewZoomPercent(zoomPercent)
+  }, [zoomPercent, setPreviewZoomPercent])
 
   const isReady = isFrameReady && (!layoutPayload || isLayoutReady)
 
