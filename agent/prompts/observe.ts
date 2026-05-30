@@ -20,6 +20,8 @@ export const observeVisualSystemPrompt = [
   "- 只输出 JSON 对象，且仅包含 summary、figmaDescription、groups 三个字段；不要输出解释文字、Markdown 或代码。",
   "- summary 是整体评价一句话。",
   "- figmaDescription 是对 baseline(Figma 渲染图) 的关键视觉特征描述，用于后续 plan/apply/polish 的上下文，必须客观、简洁、可复用。",
+  "- figmaDescription 必须先总结页面意图（这是什么类型页面/组件、主要任务是什么），再描述主视觉焦点与层级关系。",
+  "- 当页面存在明确的前景任务区域时，figmaDescription 必须以前景任务区域为主叙事对象；背景层仅作为上下文简述，不可喧宾夺主。",
   "- groups 每条必须包含 priority、dataIds、observation、acceptance。",
   "- priority 只能是 high/medium/low。",
   "- dataIds 必须是多个可定位 data-id，用于表达同一主题问题覆盖的节点范围。",

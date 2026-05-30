@@ -13,13 +13,18 @@ export const PREVIEW_SHELL_STYLE = `    <style>
         height: 100%;
         background-color: #0c0e17 !important;
         background-image:
-          linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px),
-          linear-gradient(rgba(148, 163, 184, 0.09) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(148, 163, 184, 0.09) 1px, transparent 1px),
-          radial-gradient(circle at 50% 12%, rgba(56, 189, 248, 0.09), rgba(12, 14, 23, 0) 55%);
-        background-size: 16px 16px, 16px 16px, 96px 96px, 96px 96px, 100% 100%;
+          radial-gradient(circle, rgba(148, 163, 184, 0.12) 0.9px, transparent 1.2px),
+          radial-gradient(circle, rgba(148, 163, 184, 0.07) 0.9px, transparent 1.2px),
+          linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.022) 0%,
+            rgba(255, 255, 255, 0.016) 45%,
+            rgba(255, 255, 255, 0.02) 100%
+          ),
+          linear-gradient(90deg, rgba(56, 189, 248, 0.02) 0%, rgba(56, 189, 248, 0.008) 100%);
+        background-size: 12px 12px, 60px 60px, 100% 100%, 100% 100%;
         background-position: 0 0, 0 0, 0 0, 0 0;
+        filter: saturate(0.9) blur(0.18px);
       }
       #preview-scale-root {
         width: var(--preview-width, 0px);
