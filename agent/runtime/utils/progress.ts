@@ -12,23 +12,12 @@ function summarizeForProgress(value: unknown, depth = 0): unknown {
   }
   if (typeof value !== "object") return value;
   if (Array.isArray(value)) {
-    if (depth >= 2) return { count: value.length };
     return value.slice(0, 10).map((item) => summarizeForProgress(item, depth + 1));
   }
 
   const record = value as Record<string, unknown>;
   const summary: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(record)) {
-    if (depth >= 2) {
-      summary[key] = Array.isArray(val)
-        ? { count: val.length }
-        : typeof val === "string"
-          ? val.length > 200
-            ? `${val.slice(0, 200)}...[truncated]`
-            : val
-          : val;
-      continue;
-    }
     summary[key] = summarizeForProgress(val, depth + 1);
   }
   return summary;
