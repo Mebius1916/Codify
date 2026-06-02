@@ -8,6 +8,7 @@ import type { ConvertFigmaDto } from '../dto/convertFigmaDto.ts'
 import { FigmaApiClient } from './figmaApiClient.ts'
 import type { ConvertProgressReporter } from './figmaProgress.ts'
 import type { AiEnhanceResult, CodegenResult, ConvertProgressStage, FigmaNodeRef } from '../types/figmaTypes.ts'
+import { diffPng } from './diffPng.ts'
 
 const FIGMA_AI_LLM_TIMEOUT_MS = 1 * 60_000
 const LOGGABLE_TAILWIND_FRAGMENT_MAX_LENGTH = 20_000
@@ -112,17 +113,20 @@ export class FigmaAiEnhanceService {
           deviceScaleFactor: 1,
         }),
       )
+      const currentPngBase64 = buffer.toString('base64')
+      const diff = diffPng(baselinePngBase64, currentPngBase64, 0.1)
 
       const result = await stage.run('agent_visual_repair', () =>
         runVisualRepair({
           baselinePngBase64,
-          currentPngBase64: buffer.toString('base64'),
+          currentPngBase64,
+          diffPngBase64: diff.diffBase64,
+          diffRatio: diff.diffRatio,
           html: currentHtml,
           model: aiOptions.model?.trim() || 'gemini-2.5-flash',
           apiKey: aiOptions.apiKey.trim(),
           baseUrl: aiOptions.baseUrl.trim(),
           temperature: aiOptions.temperature ?? 0,
-          threshold: 0.1,
           timeout: FIGMA_AI_LLM_TIMEOUT_MS,
           onProgress: handleAgentProgress,
           abortSignal: input.abortSignal,

@@ -1,5 +1,4 @@
 import { createLLM } from "./llm/createLLM.js";
-import { diffPng } from "./utils/diffPng.js";
 import type { RunVisualRepairInput, RunVisualRepairParams } from "./interfaces/runtime.js";
 import { runVisualRepairLoop } from "./runtime/loop.js";
 
@@ -9,24 +8,23 @@ export function runVisualRepair(params: RunVisualRepairInput) {
   const {
     baselinePngBase64,
     currentPngBase64,
+    diffPngBase64,
+    diffRatio,
     html,
     model,
     apiKey,
     baseUrl,
     temperature,
     timeout,
-    threshold,
     onProgress,
     abortSignal,
   } = params;
 
-  const diff = diffPng(baselinePngBase64, currentPngBase64, threshold);
-
   const runParams = {
     baselinePngBase64,
     currentPngBase64,
-    diffPngBase64: diff.diffBase64,
-    diffRatio: diff.diffRatio,
+    diffPngBase64,
+    diffRatio,
     html,
     model,
     apiKey,

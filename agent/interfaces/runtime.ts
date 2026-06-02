@@ -21,12 +21,13 @@ export interface RunVisualRepairParams {
 export interface RunVisualRepairInput {
   baselinePngBase64: string;
   currentPngBase64: string;
+  diffPngBase64: string;
+  diffRatio: number;
   html: string;
   model: string;
   apiKey: string;
   baseUrl: string;
   temperature: number;
-  threshold: number;
   timeout?: number;
   onProgress?: (event: AgentProgressEvent) => void;
   abortSignal?: AbortSignal;
