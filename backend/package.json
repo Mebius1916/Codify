@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter @codify/agent build && pnpm run dev:watch",
-    "dev:watch": "nodemon --watch src --watch ../agent/dist --ext ts,js,json --exec \"node --experimental-specifier-resolution=node --loader ts-node/esm src/main.ts\"",
+    "dev:watch": "node --watch --watch-path=src --watch-path=../agent/dist --experimental-specifier-resolution=node --loader ts-node/esm src/main.ts",
     "build": "tsc --noEmit",
     "start": "node --experimental-specifier-resolution=node --loader ts-node/esm src/main.ts"
   },
@@ -28,7 +28,6 @@
     "@types/node": "^20.17.50",
     "@types/pixelmatch": "^5.2.6",
     "@types/pngjs": "^6.0.5",
-    "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }

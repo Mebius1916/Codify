@@ -42,22 +42,6 @@ export function ConvertRuntimeView({ stage }: ConvertRuntimeViewProps) {
             <CurrentIcon className={cn('size-9', !isCompleted && !isFailed && 'animate-pulse')} />
           </div>
         </div>
-        <div className="absolute bottom-5 left-5 right-5 grid grid-cols-8 gap-1.5">
-          {CONVERT_STAGE_ITEMS.map((item, index) => {
-            const isActive = !isFailed && index === activeIndex && currentStage !== 'completed'
-            const isDone = !isFailed && (index < activeIndex || currentStage === 'completed')
-
-            return (
-              <div
-                key={item.stage}
-                className={cn(
-                  'h-1 rounded-full transition-colors duration-300',
-                  isActive || isDone ? 'bg-[#6F85FF]' : 'bg-[#2A2F4C]',
-                )}
-              />
-            )
-          })}
-        </div>
       </div>
 
       <div className="mt-8 w-full max-w-3xl text-center">

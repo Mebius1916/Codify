@@ -1,17 +1,22 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
 import { runVisualRepair, type AgentProgressEvent } from '@codify/agent'
 import { randomUUID } from 'node:crypto'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import { convertHtmlCssToTailwind } from '../../../../converters/index.ts'
+import { formatError, formatErrorCause } from '../../logging/loggingUtils.ts'
 import { LoggingService } from '../../logging/loggingService.ts'
 import { RenderService } from '../../render/renderService.ts'
 import type { ConvertFigmaDto } from '../dto/convertFigmaDto.ts'
 import { FigmaApiClient } from './figmaApiClient.ts'
 import type { ConvertProgressReporter } from './figmaProgress.ts'
 import type { AiEnhanceResult, CodegenResult, ConvertProgressStage, FigmaNodeRef } from '../types/figmaTypes.ts'
-import { diffPng } from './diffPng.ts'
+import { buildRenderableHtml } from './utils/buildRenderableHtml.ts'
+import { diffPng } from './utils/diffPng.ts'
 
 const FIGMA_AI_LLM_TIMEOUT_MS = 1 * 60_000
 const LOGGABLE_TAILWIND_FRAGMENT_MAX_LENGTH = 20_000
+const FIGMA_AI_DEBUG_IMAGE_DIR = resolve(process.cwd(), '.debug', 'figma-ai-enhance')
 
 type AiEnhanceStage = 'render_baseline' | 'render_current' | 'agent_visual_repair'
 
@@ -81,10 +86,23 @@ export class FigmaAiEnhanceService {
         this.figmaApiClient.fetchFigmaRenderPngBase64(input.nodeRef, input.token),
       )
       const viewport = readPngSize(baselinePngBase64)
+      const renderHtml = buildRenderableHtml(input.codegenResult)
+      const { buffer } = await stage.run('render_current', () =>
+        this.renderService.renderHtmlToImage({
+          html: renderHtml,
+          width: viewport.width,
+          height: viewport.height,
+          format: 'png',
+          fullPage: false,
+          deviceScaleFactor: 1,
+        }),
+      )
+      const currentPngBase64 = buffer.toString('base64')
+      const diff = diffPng(baselinePngBase64, currentPngBase64, 0.1)
       const currentHtml = await (async () => {
         try {
           const htmlFragment = (input.codegenResult.body || input.codegenResult.html).trim()
-          const tailwindFragment = await convertHtmlCssToTailwind(htmlFragment, input.codegenResult.css)
+          const tailwindFragment = (await convertHtmlCssToTailwind(htmlFragment, input.codegenResult.css)).trim()
           this.loggingService.info('AI enhance tailwind conversion succeeded', {
             runId,
             module: 'figma',
@@ -98,23 +116,23 @@ export class FigmaAiEnhanceService {
             runId,
             module: 'figma',
             source: 'backend',
-            error: this.formatError(error),
+            error: formatError(error),
+            errorCause: formatErrorCause(error),
           })
-          return '';
+          return (input.codegenResult.body || input.codegenResult.html).trim()
         }
       })()
-      const { buffer } = await stage.run('render_current', () =>
-        this.renderService.renderHtmlToImage({
-          html: currentHtml,
-          width: viewport.width,
-          height: viewport.height,
-          format: 'png',
-          fullPage: false,
-          deviceScaleFactor: 1,
-        }),
-      )
-      const currentPngBase64 = buffer.toString('base64')
-      const diff = diffPng(baselinePngBase64, currentPngBase64, 0.1)
+      const debugImageDir = await this.writeDebugImages(runId, {
+        baseline: baselinePngBase64,
+        current: currentPngBase64,
+        diff: diff.diffBase64,
+      })
+      this.loggingService.info('AI enhance debug images saved', {
+        runId,
+        module: 'figma',
+        source: 'backend',
+        debugImageDir,
+      })
 
       const result = await stage.run('agent_visual_repair', () =>
         runVisualRepair({
@@ -149,7 +167,8 @@ export class FigmaAiEnhanceService {
         module: 'figma',
         source: 'backend',
         durationMs: Date.now() - startedAt,
-        error: this.formatError(error),
+        error: formatError(error),
+        errorCause: formatErrorCause(error),
         stack: error instanceof Error ? error.stack : undefined,
       })
       return {
@@ -157,7 +176,7 @@ export class FigmaAiEnhanceService {
           enabled: true,
           status: 'failed',
           runId,
-          error: this.formatError(error),
+          error: formatError(error),
           events,
         },
       }
@@ -192,7 +211,8 @@ export class FigmaAiEnhanceService {
             source: 'backend',
             stage: logStage,
             durationMs: Date.now() - startedAt,
-            error: this.formatError(error),
+            error: formatError(error),
+            errorCause: formatErrorCause(error),
             stack: error instanceof Error ? error.stack : undefined,
           })
           throw error
@@ -201,9 +221,18 @@ export class FigmaAiEnhanceService {
     }
   }
 
-  private formatError(error: unknown): string {
-    if (error instanceof Error) return error.message
-    return String(error)
+  private async writeDebugImages(
+    runId: string,
+    images: { baseline: string; current: string; diff: string },
+  ): Promise<string> {
+    const outputDir = resolve(FIGMA_AI_DEBUG_IMAGE_DIR, runId)
+    await mkdir(outputDir, { recursive: true })
+    await Promise.all([
+      writeFile(resolve(outputDir, 'baseline.png'), Buffer.from(images.baseline, 'base64')),
+      writeFile(resolve(outputDir, 'current.png'), Buffer.from(images.current, 'base64')),
+      writeFile(resolve(outputDir, 'diff.png'), Buffer.from(images.diff, 'base64')),
+    ])
+    return outputDir
   }
 
   private toLoggableTailwindFragment(fragment: string): string {

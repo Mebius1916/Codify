@@ -10,6 +10,7 @@ import {
   StreamableFile,
 } from '@nestjs/common'
 import { Readable } from 'node:stream'
+import { formatError } from '../logging/loggingUtils.ts'
 
 interface DownloadImageDto {
   url: string
@@ -34,7 +35,7 @@ export class AssetController {
     try {
       response = await fetch(parsedUrl)
     } catch (error) {
-      const message = this.formatError(error)
+      const message = formatError(error)
       this.logger.error(`Asset download request failed: host=${parsedUrl.host} message=${message}`)
       throw new ServiceUnavailableException(`图片下载失败：无法访问远程资源 (${message})`)
     }
@@ -50,10 +51,5 @@ export class AssetController {
       type: contentType,
       length: buffer.length,
     })
-  }
-
-  private formatError(error: unknown): string {
-    if (error instanceof Error) return error.message
-    return String(error)
   }
 }
