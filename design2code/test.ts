@@ -6,6 +6,7 @@ import { chromium } from "playwright";
 import { convertHtmlCssToTailwind } from "../converters/index.js";
 import { simplifyRawFigmaObjectWithImages } from "./core/extractors/pipeline/design-extractor.js";
 import codegen from "./core/codegen/index.js";
+import { GENERATED_PAGE_RESET_CSS } from "./core/codegen/html/resetCss.js";
 
 const inputFile = "test.json";
 const rootDir = "./test";
@@ -96,30 +97,7 @@ function extractBodyFragment(html: string) {
 
 async function writeResetCss() {
   const dst = path.resolve(process.cwd(), `${d2cDir}/reset.css`);
-  await fsp.writeFile(
-    dst,
-    `* {
-  box-sizing: border-box;
-}
-
-p,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  margin: 0;
-}
-
-button {
-  border: none;
-  background: none;
-  padding: 0;
-}
-`,
-    "utf8",
-  );
+  await fsp.writeFile(dst, `${GENERATED_PAGE_RESET_CSS}\n`, "utf8");
 }
 
 async function renderPageToPng(
