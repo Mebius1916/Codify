@@ -106,6 +106,18 @@ export class FigmaAiEnhanceService {
           renderedPngBase64: currentPngBase64,
         }),
       )
+      const debugImageDir = await this.writeDebugImages(runId, {
+        baseline: baselinePngBase64,
+        current: currentPngBase64,
+        evidence: visualAttention.visualEvidencePngBase64,
+      })
+      this.loggingService.info('AI enhance debug images saved', {
+        runId,
+        module: 'figma',
+        source: 'backend',
+        debugImageDir,
+      })
+
       const currentHtml = await (async () => {
         try {
           const htmlFragment = (input.codegenResult.body || input.codegenResult.html).trim()
@@ -129,17 +141,6 @@ export class FigmaAiEnhanceService {
           return (input.codegenResult.body || input.codegenResult.html).trim()
         }
       })()
-      const debugImageDir = await this.writeDebugImages(runId, {
-        baseline: baselinePngBase64,
-        current: currentPngBase64,
-        evidence: visualAttention.visualEvidencePngBase64,
-      })
-      this.loggingService.info('AI enhance debug images saved', {
-        runId,
-        module: 'figma',
-        source: 'backend',
-        debugImageDir,
-      })
 
       const result = await stage.run('agent_visual_repair', () =>
         runVisualRepair({

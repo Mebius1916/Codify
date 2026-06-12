@@ -3,8 +3,9 @@ import type { InternalRegion, BBox } from '../interface/index.ts'
 import { mergeBBoxes } from '../utils/rasterDraw.ts'
 
 const MIN_REGION_PATCH_COUNT = 3
-const MIN_REGION_AREA = 16 * 16
-const MIN_REGION_FILL_RATIO = 0.5
+const MIN_REGION_AREA = 1 * 1
+// 阈值可低不可高，阈值的作用是减少冗余数据
+const MIN_REGION_FILL_RATIO = 0.2
 
 interface MutableRegion {
   bbox: BBox

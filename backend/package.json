@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm run dev:watch",
-    "dev:watch": "node --watch --watch-path=src --experimental-specifier-resolution=node --loader ts-node/esm src/main.ts",
+    "dev:watch": "nodemon --watch src --ext ts --delay 500ms --exec \"node --experimental-specifier-resolution=node --loader ts-node/esm src/main.ts\"",
     "build": "tsc --noEmit",
     "start": "node --experimental-specifier-resolution=node --loader ts-node/esm src/main.ts"
   },
@@ -28,6 +28,7 @@
   "devDependencies": {
     "@types/node": "^20.17.50",
     "@types/pngjs": "^6.0.5",
+    "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }

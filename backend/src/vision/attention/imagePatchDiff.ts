@@ -7,7 +7,7 @@ import type { DinoPatchFeatures } from '../dinov2/dinov2FeatureExtractor.ts'
 
 const MAD_NORMAL_SCALE = 1.4826
 const MAD_SIGMA_FACTOR = 3
-const ANOMALOUS_PATCH_PERCENTILE = 0.9
+const ANOMALOUS_PATCH_PERCENTILE = 0.75 //todo
 
 export interface PatchDiff {
   index: number
