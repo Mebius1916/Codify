@@ -13,9 +13,6 @@ export interface VisualRepairContext {
   input: RunVisualRepairParams;
   currentHtml: string;
   currentCss: string;
-  currentPngBase64: string;
-  diffPngBase64: string;
-  diffRatio: number;
   observeSummary?: string;
   observeFigmaDescription?: string;
   observeGroups?: ObserveGroup[];
@@ -31,9 +28,6 @@ export async function runVisualRepairLoop(
     input: params,
     currentHtml: params.html,
     currentCss: "",
-    currentPngBase64: params.currentPngBase64,
-    diffPngBase64: params.diffPngBase64,
-    diffRatio: params.diffRatio,
   };
 
   const runWorkflow = async () => {

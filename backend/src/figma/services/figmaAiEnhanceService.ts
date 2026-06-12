@@ -7,18 +7,18 @@ import { convertHtmlCssToTailwind } from '../../../../converters/index.ts'
 import { formatError, formatErrorCause } from '../../logging/loggingUtils.ts'
 import { LoggingService } from '../../logging/loggingService.ts'
 import { RenderService } from '../../render/renderService.ts'
+import { VisualAttentionService } from '../../vision/visualAttentionService.ts'
 import type { ConvertFigmaDto } from '../dto/convertFigmaDto.ts'
 import { FigmaApiClient } from './figmaApiClient.ts'
 import type { ConvertProgressReporter } from './figmaProgress.ts'
 import type { AiEnhanceResult, CodegenResult, ConvertProgressStage, FigmaNodeRef } from '../types/figmaTypes.ts'
 import { buildRenderableHtml } from './utils/buildRenderableHtml.ts'
-import { diffPng } from './utils/diffPng.ts'
 
 const FIGMA_AI_LLM_TIMEOUT_MS = 1 * 60_000
 const LOGGABLE_TAILWIND_FRAGMENT_MAX_LENGTH = 20_000
 const FIGMA_AI_DEBUG_IMAGE_DIR = resolve(process.cwd(), '.debug', 'figma-ai-enhance')
 
-type AiEnhanceStage = 'render_baseline' | 'render_current' | 'agent_visual_repair'
+type AiEnhanceStage = 'render_baseline' | 'render_current' | 'visual_attention' | 'agent_visual_repair'
 
 interface AiEnhanceStageReporter {
   run<T>(stage: AiEnhanceStage, task: () => Promise<T>): Promise<T>
@@ -37,6 +37,7 @@ export class FigmaAiEnhanceService {
   constructor(
     private readonly figmaApiClient: FigmaApiClient,
     private readonly renderService: RenderService,
+    private readonly visualAttentionService: VisualAttentionService,
     private readonly loggingService: LoggingService,
   ) {}
 
@@ -98,7 +99,13 @@ export class FigmaAiEnhanceService {
         }),
       )
       const currentPngBase64 = buffer.toString('base64')
-      const diff = diffPng(baselinePngBase64, currentPngBase64, 0.1)
+      const visualAttention = await stage.run('visual_attention', () =>
+        this.visualAttentionService.buildAttention({
+          runId,
+          figmaPngBase64: baselinePngBase64,
+          renderedPngBase64: currentPngBase64,
+        }),
+      )
       const currentHtml = await (async () => {
         try {
           const htmlFragment = (input.codegenResult.body || input.codegenResult.html).trim()
@@ -125,7 +132,7 @@ export class FigmaAiEnhanceService {
       const debugImageDir = await this.writeDebugImages(runId, {
         baseline: baselinePngBase64,
         current: currentPngBase64,
-        diff: diff.diffBase64,
+        evidence: visualAttention.visualEvidencePngBase64,
       })
       this.loggingService.info('AI enhance debug images saved', {
         runId,
@@ -136,10 +143,7 @@ export class FigmaAiEnhanceService {
 
       const result = await stage.run('agent_visual_repair', () =>
         runVisualRepair({
-          baselinePngBase64,
-          currentPngBase64,
-          diffPngBase64: diff.diffBase64,
-          diffRatio: diff.diffRatio,
+          visualEvidencePngBase64: visualAttention.visualEvidencePngBase64,
           html: currentHtml,
           model: aiOptions.model?.trim() || 'gemini-2.5-flash',
           apiKey: aiOptions.apiKey.trim(),
@@ -191,7 +195,7 @@ export class FigmaAiEnhanceService {
       run: async <T>(stage: AiEnhanceStage, task: () => Promise<T>): Promise<T> => {
         const startedAt = Date.now()
         const logStage = stage.replaceAll('_', '-')
-        if (stage !== 'agent_visual_repair') {
+        if (stage === 'render_baseline' || stage === 'render_current') {
           convertProgress.report(stage satisfies ConvertProgressStage)
         }
         try {
@@ -223,15 +227,16 @@ export class FigmaAiEnhanceService {
 
   private async writeDebugImages(
     runId: string,
-    images: { baseline: string; current: string; diff: string },
+    images: { baseline: string; current: string; evidence: string },
   ): Promise<string> {
     const outputDir = resolve(FIGMA_AI_DEBUG_IMAGE_DIR, runId)
     await mkdir(outputDir, { recursive: true })
-    await Promise.all([
+    const writes = [
       writeFile(resolve(outputDir, 'baseline.png'), Buffer.from(images.baseline, 'base64')),
       writeFile(resolve(outputDir, 'current.png'), Buffer.from(images.current, 'base64')),
-      writeFile(resolve(outputDir, 'diff.png'), Buffer.from(images.diff, 'base64')),
-    ])
+    ]
+    writes.push(writeFile(resolve(outputDir, 'visual-evidence.png'), Buffer.from(images.evidence, 'base64')))
+    await Promise.all(writes)
     return outputDir
   }
 

@@ -6,10 +6,7 @@ export type { AgentProgressEvent } from "./interfaces/runtime.js";
 
 export function runVisualRepair(params: RunVisualRepairInput) {
   const {
-    baselinePngBase64,
-    currentPngBase64,
-    diffPngBase64,
-    diffRatio,
+    visualEvidencePngBase64,
     html,
     model,
     apiKey,
@@ -21,10 +18,7 @@ export function runVisualRepair(params: RunVisualRepairInput) {
   } = params;
 
   const runParams = {
-    baselinePngBase64,
-    currentPngBase64,
-    diffPngBase64,
-    diffRatio,
+    visualEvidencePngBase64,
     html,
     model,
     apiKey,

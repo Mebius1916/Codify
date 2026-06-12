@@ -15,5 +15,14 @@
   },
   "dependencies": {
     "pnpm": "^10.26.2"
+  },
+  "pnpm": {
+    "packageExtensions": {
+      "@huggingface/transformers@*": {
+        "dependencies": {
+          "onnxruntime-common": "1.24.3"
+        }
+      }
+    }
   }
 }

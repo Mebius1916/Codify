@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, type OnModuleDestroy } from '@nestjs/common'
-import puppeteer, { type Browser } from 'puppeteer'
+import puppeteer, { type Browser, type Page } from 'puppeteer'
 import type { RenderHtmlDto } from './renderController.ts'
 
 export type RenderImageFormat = 'png' | 'jpeg' | 'webp'
@@ -35,24 +35,34 @@ export class RenderService implements OnModuleDestroy {
     const fullPage = input.fullPage ?? true
     const omitBackground = input.omitBackground ?? false
 
-    const browser = await this.getBrowser()
-    const page = await browser.newPage()
-    try {
-      await page.setViewport({ width, height, deviceScaleFactor })
-      // networkidle0 等待所有资源（图片/字体）加载完成，确保截图稳定
-      await page.setContent(input.html, { waitUntil: 'networkidle0' })
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const browser = await this.getBrowser()
+      let page: Page | undefined
+      try {
+        page = await browser.newPage()
+        await page.setViewport({ width, height, deviceScaleFactor })
+        // networkidle0 等待所有资源（图片/字体）加载完成，确保截图稳定
+        await page.setContent(input.html, { waitUntil: 'networkidle0' })
 
-      const screenshot = await page.screenshot({
-        type: format,
-        fullPage,
-        omitBackground,
-        encoding: 'binary',
-      })
+        const screenshot = await page.screenshot({
+          type: format,
+          fullPage,
+          omitBackground,
+          encoding: 'binary',
+        })
 
-      return { buffer: Buffer.from(screenshot), format }
-    } finally {
-      await page.close().catch(() => undefined)
+        return { buffer: Buffer.from(screenshot), format }
+      } catch (error) {
+        if (attempt === 0 && this.isBrowserConnectionError(error)) {
+          await this.resetBrowser(browser)
+          continue
+        }
+        throw error
+      } finally {
+        await page?.close().catch(() => undefined)
+      }
     }
+    throw new Error('HTML render failed after browser restart')
   }
 
   async onModuleDestroy() {
@@ -63,6 +73,10 @@ export class RenderService implements OnModuleDestroy {
   }
 
   private async getBrowser(): Promise<Browser> {
+    const existing = await this.browserPromise?.catch(() => null)
+    if (existing && !existing.connected) {
+      await this.resetBrowser(existing)
+    }
     if (!this.browserPromise) {
       this.browserPromise = puppeteer.launch({
         headless: true,
@@ -73,6 +87,16 @@ export class RenderService implements OnModuleDestroy {
       })
     }
     return this.browserPromise
+  }
+
+  private async resetBrowser(browser: Browser): Promise<void> {
+    if (this.browserPromise) this.browserPromise = null
+    await browser.close().catch(() => undefined)
+  }
+
+  private isBrowserConnectionError(error: unknown): boolean {
+    if (!(error instanceof Error)) return false
+    return error.message.includes('Connection closed') || error.message.includes('Target closed')
   }
 
   private resolveFormat(format: RenderHtmlDto['format']): RenderImageFormat {

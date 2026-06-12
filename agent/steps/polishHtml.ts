@@ -7,7 +7,6 @@ import {
 } from "../interfaces/htmlCssResult.js";
 import { polishHtmlSystemPrompt } from "../prompts/polish.js";
 import type { VisualRepairContext } from "../runtime/loop.js";
-import { toLLMMessages } from "../runtime/utils/llmContext.js";
 import { sanitizers } from "../sanitizers/index.js";
 
 export interface PolishHtmlInput {
@@ -58,9 +57,7 @@ export async function polishHtml(
       input.currentCss,
     )
   );
-  const projected = toLLMMessages(input.context);
-
-  const rawResult = await structuredLlm.invoke([...projected, instruction], {
+  const rawResult = await structuredLlm.invoke([instruction], {
     signal: input.context.input.abortSignal,
   });
   const result = sanitizers.rewrite(htmlCssResultSchema.parse(rawResult), {

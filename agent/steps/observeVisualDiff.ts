@@ -2,13 +2,16 @@ import { HumanMessage } from "@langchain/core/messages";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 
 import {
+  MAX_OBSERVE_GROUPS,
   observeOutputSchema,
   type ObserveGroup,
 } from "../interfaces/observeFinding.js";
-import { observeVisualSystemPrompt } from "../prompts/observe.js";
 import type { VisualRepairContext } from "../runtime/loop.js";
 import { compactHtmlForPrompt } from "../runtime/utils/htmlPrompt.js";
-import { toLLMMessages } from "../runtime/utils/llmContext.js";
+import {
+  buildObserveInstruction,
+  buildObserveVisualContextMessage,
+} from "./utils/observePrompt.js";
 
 export interface ObserveVisualDiffInput {
   context: VisualRepairContext;
@@ -19,18 +22,6 @@ export interface ObserveVisualDiffOutput {
   summary: string;
   figmaDescription: string;
   groups: ObserveGroup[];
-}
-
-function buildObserveInstruction(currentHtml: string): string {
-  return [
-    observeVisualSystemPrompt,
-    "",
-    "===== 本步任务 =====",
-    "请基于三张视觉上下文图和下面的当前参考代码，只输出结构化 groups。",
-    "",
-    "## 当前参考代码",
-    currentHtml,
-  ].join("\n");
 }
 
 export async function observeVisualDiff(
@@ -44,7 +35,7 @@ export async function observeVisualDiff(
 
   const promptHtml = await compactHtmlForPrompt(input.currentHtml);
   const instruction = new HumanMessage(buildObserveInstruction(promptHtml));
-  const projected = toLLMMessages(input.context, { includeVisualContext: true });
+  const projected = buildObserveVisualContextMessage(input.context);
 
   const rawGroups = await structuredLlm.invoke([...projected, instruction], {
     signal: input.context.input.abortSignal,
@@ -63,10 +54,11 @@ export async function observeVisualDiff(
     }))
     .filter(
       (group) =>
-        group.dataIds.length >= 1 &&
+        group.dataIds.length >= 2 &&
         group.observation &&
         group.acceptance,
-    );
+    )
+    .slice(0, MAX_OBSERVE_GROUPS);
 
   return { summary, figmaDescription, groups };
 }

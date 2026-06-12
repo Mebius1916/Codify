@@ -9,7 +9,6 @@ import type { ObserveGroup } from "../interfaces/observeFinding.js";
 import { planVisualRepairSystemPrompt } from "../prompts/plan.js";
 import type { VisualRepairContext } from "../runtime/loop.js";
 import { compactHtmlForPrompt } from "../runtime/utils/htmlPrompt.js";
-import { toLLMMessages } from "../runtime/utils/llmContext.js";
 import { sanitizers } from "../sanitizers/index.js";
 
 export interface PlanVisualRepairInput {
@@ -62,9 +61,7 @@ export async function planVisualRepair(
       promptHtml,
     )
   );
-  const projected = toLLMMessages(input.context);
-
-  const rawPlanGroups = await structuredLlm.invoke([...projected, instruction], {
+  const rawPlanGroups = await structuredLlm.invoke([instruction], {
     signal: input.context.input.abortSignal,
   });
   const planGroups = sanitizers.plan(repairPlanGroupListSchema.parse(rawPlanGroups), {

@@ -9,6 +9,7 @@ node_modules/
 # testing
 coverage/
 data/
+backend/models/
 
 # next.js
 .next/

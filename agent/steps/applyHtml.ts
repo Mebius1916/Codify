@@ -9,7 +9,6 @@ import type { RepairPlanGroup } from "../interfaces/repairPatch.js";
 import { applyHtmlSystemPrompt } from "../prompts/apply.js";
 import type { VisualRepairContext } from "../runtime/loop.js";
 import { compactHtmlForPrompt } from "../runtime/utils/htmlPrompt.js";
-import { toLLMMessages } from "../runtime/utils/llmContext.js";
 
 export interface ApplyHtmlInput {
   context: VisualRepairContext;
@@ -61,9 +60,7 @@ export async function applyHtml(
       promptHtml,
     )
   );
-  const projected = toLLMMessages(input.context);
-
-  const rawResult = await structuredLlm.invoke([...projected, instruction], {
+  const rawResult = await structuredLlm.invoke([instruction], {
     signal: input.context.input.abortSignal,
   });
   const parsed = htmlFragmentResultSchema.parse(rawResult);

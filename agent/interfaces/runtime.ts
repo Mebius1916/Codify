@@ -4,10 +4,7 @@ export interface AgentProgressEvent {
 }
 
 export interface RunVisualRepairParams {
-  baselinePngBase64: string;
-  currentPngBase64: string;
-  diffPngBase64: string;
-  diffRatio: number;
+  visualEvidencePngBase64: string;
   html: string;
   model: string;
   apiKey: string;
@@ -19,10 +16,7 @@ export interface RunVisualRepairParams {
 }
 
 export interface RunVisualRepairInput {
-  baselinePngBase64: string;
-  currentPngBase64: string;
-  diffPngBase64: string;
-  diffRatio: number;
+  visualEvidencePngBase64: string;
   html: string;
   model: string;
   apiKey: string;
