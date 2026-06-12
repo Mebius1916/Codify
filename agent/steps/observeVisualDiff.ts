@@ -19,7 +19,6 @@ export interface ObserveVisualDiffInput {
 }
 
 export interface ObserveVisualDiffOutput {
-  summary: string;
   figmaDescription: string;
   groups: ObserveGroup[];
 }
@@ -42,7 +41,6 @@ export async function observeVisualDiff(
   });
 
   const parsed = observeOutputSchema.parse(rawGroups);
-  const summary = parsed.summary.trim();
   const figmaDescription = parsed.figmaDescription.trim();
 
   const groups = parsed.groups
@@ -60,5 +58,5 @@ export async function observeVisualDiff(
     )
     .slice(0, MAX_OBSERVE_GROUPS);
 
-  return { summary, figmaDescription, groups };
+  return { figmaDescription, groups };
 }

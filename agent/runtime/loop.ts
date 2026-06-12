@@ -13,7 +13,6 @@ export interface VisualRepairContext {
   input: RunVisualRepairParams;
   currentHtml: string;
   currentCss: string;
-  observeSummary?: string;
   observeFigmaDescription?: string;
   observeGroups?: ObserveGroup[];
   repairPlanGroups?: { groups: RepairPlanGroup[] };
@@ -31,7 +30,7 @@ export async function runVisualRepairLoop(
   };
 
   const runWorkflow = async () => {
-    const { summary, figmaDescription, groups } = await runWithAgentProgress(
+    const { figmaDescription, groups } = await runWithAgentProgress(
       context,
       "observe",
       () =>
@@ -40,7 +39,6 @@ export async function runVisualRepairLoop(
           currentHtml: context.currentHtml,
         }),
     );
-    context.observeSummary = summary;
     context.observeFigmaDescription = figmaDescription;
     context.observeGroups = groups;
 
@@ -54,7 +52,6 @@ export async function runVisualRepairLoop(
           groups: context.observeGroups ?? [],
         }),
     );
-    context.observeSummary = undefined;
     context.observeFigmaDescription = undefined;
     context.observeGroups = undefined;
     context.repairPlanGroups = planGroups;

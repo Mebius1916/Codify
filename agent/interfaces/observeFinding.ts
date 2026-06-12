@@ -12,7 +12,6 @@ export const observeGroupSchema = z.object({
 });
 
 export const observeOutputSchema = z.object({
-  summary: z.string().min(1),
   figmaDescription: z.string().min(1),
   groups: z.array(observeGroupSchema).max(MAX_OBSERVE_GROUPS),
 });
