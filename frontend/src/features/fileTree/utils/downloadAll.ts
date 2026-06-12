@@ -1,4 +1,5 @@
 import { zipSync, strToU8 } from 'fflate'
+import { formatNetworkError, readResponseErrorMessage } from '@/utils/errorMessage'
 
 const ASSET_DOWNLOAD_CONCURRENCY = 4
 
@@ -26,13 +27,18 @@ function triggerDownload(blob: Blob, filename: string) {
 
 async function fetchAsset(url: string): Promise<DownloadedAsset> {
   const baseUrl = import.meta.env.VITE_BACKEND_URL?.trim()
-  const response = await fetch(`${baseUrl}/api/assets/download-image`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url }),
-  })
+  let response: Response
+  try {
+    response = await fetch(`${baseUrl}/api/assets/download-image`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    })
+  } catch (error) {
+    throw new Error(formatNetworkError(`图片资源下载失败：${url}`, error))
+  }
   if (!response.ok) {
-    throw new Error(`Failed to download asset: ${response.status} ${response.statusText}`)
+    throw new Error(await readResponseErrorMessage(response, `图片资源下载失败：${url}`))
   }
   return {
     bytes: new Uint8Array(await response.arrayBuffer()),

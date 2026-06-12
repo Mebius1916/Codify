@@ -12,8 +12,8 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      'fixed top-4 left-1/2 z-[60] flex max-h-[calc(100vh-16px)] w-[calc(100vw-20px)] max-w-[420px] -translate-x-1/2 flex-col gap-2 outline-none',
-      'sm:left-auto sm:right-5 sm:top-5 sm:w-[420px] sm:max-w-[420px] sm:translate-x-0',
+      'fixed bottom-4 left-1/2 z-[60] flex max-h-[calc(100vh-16px)] w-[calc(100vw-24px)] max-w-[360px] -translate-x-1/2 flex-col gap-2 outline-none',
+      'sm:left-auto sm:right-5 sm:bottom-5 sm:w-[360px] sm:max-w-[360px] sm:translate-x-0',
       className,
     )}
     {...props}
@@ -28,7 +28,7 @@ const Toast = React.forwardRef<
   <ToastPrimitives.Root
     ref={ref}
     className={cn(
-      'group pointer-events-auto relative flex w-full items-center justify-between gap-2 overflow-hidden rounded-lg border border-[#2A2F4C] bg-[#0f1119]/90 px-3 py-2 text-[#E5E7EB] shadow-xl backdrop-blur-sm will-change-transform data-[state=open]:animate-[toastIn_180ms_cubic-bezier(0.16,1,0.3,1)] data-[state=closed]:animate-[toastOut_140ms_ease-in]',
+      'group pointer-events-auto relative flex w-full items-center justify-between gap-2 overflow-hidden rounded-lg border border-[#2A2F4C] bg-[#0f1119] px-3 py-2 text-[#E5E7EB] shadow-xl will-change-transform data-[state=open]:animate-[toastIn_180ms_cubic-bezier(0.16,1,0.3,1)] data-[state=closed]:animate-[toastOut_140ms_ease-in]',
       className,
     )}
     {...props}

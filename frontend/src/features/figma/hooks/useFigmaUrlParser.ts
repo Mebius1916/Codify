@@ -17,26 +17,28 @@ export function useFigmaUrlParser() {
     aiEnhance,
     useConvertCache,
     modelApiEndpoint,
-    modelApiKey,
     modelName,
   } = useUiStore((s) => ({
     figmaToken: s.figmaToken,
     aiEnhance: s.aiEnhance,
     useConvertCache: s.useConvertCache,
     modelApiEndpoint: s.modelApiEndpoint,
-    modelApiKey: s.modelApiKey,
     modelName: s.modelName,
   }));
 
   const parse = async (inputUrl: string) => {
     if (!inputUrl) {
-      setState({ status: 'error', error: '请输入 figma url' });
+      const message = '请输入 figma url';
+      showToast({ title: 'Figma 链接缺失', message, variant: 'error' });
+      setState({ status: 'error', error: message });
       return null;
     }
 
     const token = figmaToken.trim();
     if (!token) {
-      setState({ status: 'error', error: '请先在 Settings 填写 Figma Token' });
+      const message = '请先在 Settings 填写 Figma Token，否则后端无法访问 Figma 文件数据';
+      showToast({ title: 'Figma Token 缺失', message, variant: 'error' });
+      setState({ status: 'error', error: message });
       return null;
     }
 
@@ -52,11 +54,17 @@ export function useFigmaUrlParser() {
         aiOptions: aiEnhance
           ? {
               baseUrl: modelApiEndpoint.trim(),
-              apiKey: modelApiKey.trim(),
               model: modelName.trim(),
             }
           : undefined,
       });
+      if (result.aiEnhanceMeta?.status === 'failed' && result.aiEnhanceMeta.error) {
+        showToast({
+          title: 'AI 增强失败',
+          message: result.aiEnhanceMeta.error,
+          variant: 'warning',
+        });
+      }
       setState({ status: 'success', data: result });
       return result;
     } catch (e: unknown) {

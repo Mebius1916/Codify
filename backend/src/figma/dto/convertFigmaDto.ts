@@ -3,7 +3,7 @@ export interface ConvertFigmaDto {
   token: string
   aiEnhance?: boolean
   aiOptions?: {
-    apiKey: string
+    apiKey?: string
     baseUrl: string
     model?: string
     temperature?: number

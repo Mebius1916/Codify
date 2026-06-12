@@ -2,6 +2,7 @@ import localforage from 'localforage'
 import type { ConvertStageEvent, FigmaConvertResult } from '../interfaces/model'
 import { createConvertResultCacheKey } from '../utils/convertCache'
 import { readConvertStream } from '../utils/convertStream'
+import { formatNetworkError, readResponseErrorMessage } from '@/utils/errorMessage'
 
 const convertResultCache = localforage.createInstance({ name: 'figma-convert-result-cache' })
 
@@ -13,7 +14,6 @@ interface ConvertFigmaOptions {
   onStage?: (event: ConvertStageEvent) => void
   aiOptions?: {
     model: string
-    apiKey: string
     baseUrl: string
   }
 }
@@ -36,22 +36,27 @@ export async function convertFigma({
   }
 
   const baseUrl = import.meta.env.VITE_BACKEND_URL?.trim();
-  const resp = await fetch(`${baseUrl}/api/figma/convert`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/x-ndjson',
-    },
-    body: JSON.stringify({
-      figmaUrl,
-      token,
-      aiEnhance,
-      aiOptions: aiEnhance ? aiOptions : undefined,
-    }),
-  })
+  let resp: Response
+  try {
+    resp = await fetch(`${baseUrl}/api/figma/convert`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/x-ndjson',
+      },
+      body: JSON.stringify({
+        figmaUrl,
+        token,
+        aiEnhance,
+        aiOptions: aiEnhance ? aiOptions : undefined,
+      }),
+    })
+  } catch (error) {
+    throw new Error(formatNetworkError('Figma 转换失败', error))
+  }
 
   if (!resp.ok) {
-    throw new Error(`Figma 转换失败: ${resp.status} ${resp.statusText}`)
+    throw new Error(await readResponseErrorMessage(resp, 'Figma 转换失败'))
   }
 
   const result = await readConvertStream(resp, onStage)

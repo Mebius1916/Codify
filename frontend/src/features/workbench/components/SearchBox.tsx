@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useFigmaUrlParser } from '@/features/figma/hooks/useFigmaUrlParser';
 import { ConvertStageMiniStatus } from '@/features/figma/components/ConvertStageMiniStatus';
 import { runConvertFlow } from '@/features/figma/services/runConvertFlow';
+import { showToast } from '@/ui/appToast';
+import { formatUnknownError } from '@/utils/errorMessage';
 
 export function SearchBox() {
   const navigate = useNavigate();
@@ -16,8 +18,16 @@ export function SearchBox() {
   const handleConvert = async () => {
     const result = await parse(url);
     if (result) {
-      await runConvertFlow(result);
-      navigate(`/editor`);
+      try {
+        await runConvertFlow(result);
+        navigate(`/editor`);
+      } catch (error) {
+        showToast({
+          title: '转换结果写入失败',
+          message: formatUnknownError(error, '转换已完成，但写入编辑器文件时失败，请检查浏览器存储空间或刷新后重试。'),
+          variant: 'error',
+        });
+      }
     }
   };
 

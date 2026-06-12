@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, type OnModuleDestroy } from '@nestjs/common'
 import puppeteer, { type Browser, type Page } from 'puppeteer'
+import { formatUserError } from '../errors/userErrorEvents.ts'
 import type { RenderHtmlDto } from './renderController.ts'
 
 export type RenderImageFormat = 'png' | 'jpeg' | 'webp'
@@ -57,12 +58,12 @@ export class RenderService implements OnModuleDestroy {
           await this.resetBrowser(browser)
           continue
         }
-        throw error
+        throw new Error(formatUserError({ type: 'render.html.failed', error }))
       } finally {
         await page?.close().catch(() => undefined)
       }
     }
-    throw new Error('HTML render failed after browser restart')
+    throw new Error(formatUserError({ type: 'render.html.restart_failed' }))
   }
 
   async onModuleDestroy() {

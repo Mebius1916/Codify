@@ -18,13 +18,19 @@ export async function readConvertStream(
 
   const handleLine = (line: string) => {
     if (!line.trim()) return
-    const event = JSON.parse(line) as ConvertStreamEvent
+    let event: ConvertStreamEvent
+    try {
+      event = JSON.parse(line) as ConvertStreamEvent
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      throw new Error(`Figma 转换失败：后端响应格式异常。解析错误：${detail}`)
+    }
     if (event.type === 'result') {
       result = event.data
       return
     }
     if (event.type === 'error') {
-      throw new Error(event.message)
+      throw new Error(event.message || 'Figma 转换失败：后端返回 error 事件，但没有提供具体错误信息')
     }
     onStage?.({ stage: event.type, label: event.label })
   }

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import localforage from 'localforage'
+import { applyModelApiEnvDefaults, modelApiEnvConfig } from '@/config/modelApiEnv'
 
 interface PreviewContentSize {
   width: number
@@ -42,10 +43,10 @@ export const useUiStore = create<UiState>()(
     (set: SetState<UiState>) => ({
       previewContentSize: null,
       previewZoomPercent: 100,
-      modelApiEndpoint: '',
-      modelApiKey: '',
-      modelName: 'gpt-4o',
-      aiEnhance: false,
+      modelApiEndpoint: modelApiEnvConfig.endpoint,
+      modelApiKey: modelApiEnvConfig.locked ? 'Configured on server' : '',
+      modelName: modelApiEnvConfig.model || 'gpt-4o',
+      aiEnhance: modelApiEnvConfig.locked,
       useConvertCache: true,
       figmaToken: '',
 
@@ -57,18 +58,34 @@ export const useUiStore = create<UiState>()(
       },
 
       setModelApiEndpoint: (endpoint: string) => {
+        if (modelApiEnvConfig.locked) {
+          set({ modelApiEndpoint: modelApiEnvConfig.endpoint })
+          return
+        }
         set({ modelApiEndpoint: endpoint })
       },
 
       setModelApiKey: (key: string) => {
+        if (modelApiEnvConfig.locked) {
+          set({ modelApiKey: 'Configured on server' })
+          return
+        }
         set({ modelApiKey: key })
       },
 
       setModelName: (model: string) => {
+        if (modelApiEnvConfig.locked) {
+          set({ modelName: modelApiEnvConfig.model })
+          return
+        }
         set({ modelName: model })
       },
 
       setAiEnhance: (enabled: boolean) => {
+        if (modelApiEnvConfig.locked) {
+          set({ aiEnhance: true })
+          return
+        }
         set({ aiEnhance: enabled })
       },
 
@@ -94,6 +111,10 @@ export const useUiStore = create<UiState>()(
         aiEnhance: state.aiEnhance,
         useConvertCache: state.useConvertCache,
         figmaToken: state.figmaToken,
+      }),
+      merge: (persisted, current) => applyModelApiEnvDefaults({
+        ...current,
+        ...(persisted as Partial<UiState>),
       }),
     }
   )

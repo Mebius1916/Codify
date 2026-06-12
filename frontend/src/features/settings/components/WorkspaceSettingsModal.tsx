@@ -57,6 +57,7 @@ export function WorkspaceSettingsModal({
     modelApiKeyInputRef,
     modelApiEndpointInvalid,
     modelApiKeyInvalid,
+    modelApiLocked,
     handleSave,
   } = useWorkspaceSettingsModalState({
     open,
@@ -121,6 +122,7 @@ export function WorkspaceSettingsModal({
                   apiKey={apiKey}
                   modelName={modelNameDraft}
                   aiEnhance={aiEnhanceDraft}
+                  locked={modelApiLocked}
                   endpointInvalid={modelApiEndpointInvalid}
                   apiKeyInvalid={modelApiKeyInvalid}
                   maskedTextStyle={maskedTextStyle}

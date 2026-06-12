@@ -5,9 +5,9 @@ import { cn } from '@/utils/cn'
 import { Alert, AlertDescription, AlertTitle } from './alert'
 
 const APP_TOAST_EVENT = 'app-toast'
-const TOAST_DURATION_MS = 5000
+const TOAST_DURATION_MS = 7000
 
-type AppToastVariant = 'default' | 'success' | 'error'
+type AppToastVariant = 'default' | 'success' | 'warning' | 'error'
 
 interface AppToastDetail {
   message: string
@@ -28,17 +28,22 @@ const toastTone = {
   },
   success: {
     icon: 'text-emerald-300',
-    alert: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-100',
+    alert: 'border-emerald-500/45 bg-[#0F1D18] text-emerald-100',
+  },
+  warning: {
+    icon: 'text-amber-300',
+    alert: 'border-amber-500/50 bg-[#211A10] text-amber-100',
   },
   error: {
     icon: 'text-red-300',
-    alert: 'border-red-500/45 bg-red-500/10 text-red-100',
+    alert: 'border-red-500/55 bg-[#211316] text-red-100',
   },
 } satisfies Record<AppToastVariant, Record<'icon' | 'alert', string>>
 
 const toastIcon = {
   default: Info,
   success: CheckCircle2,
+  warning: AlertTriangle,
   error: AlertTriangle,
 } satisfies Record<AppToastVariant, typeof Info>
 
@@ -72,7 +77,7 @@ export function AppToaster() {
   }, [])
 
   return (
-    <ToastProvider swipeDirection="up">
+    <ToastProvider swipeDirection="right">
       {toast && (
         (() => {
           const StatusIcon = toastIcon[toast.variant]
@@ -95,10 +100,10 @@ export function AppToaster() {
                 >
                   <X className="size-4" />
                 </ToastClose>
-                <AlertTitle className="pl-7 text-sm font-medium leading-5">
-                  {toast.title ?? (toast.variant === 'error' ? 'Action failed' : toast.variant === 'success' ? 'Completed' : 'System update')}
+                <AlertTitle className="pl-7 pr-2 text-sm font-medium leading-5">
+                  {toast.title ?? (toast.variant === 'error' ? 'Action failed' : toast.variant === 'success' ? 'Completed' : toast.variant === 'warning' ? 'Needs attention' : 'System update')}
                 </AlertTitle>
-                <AlertDescription className="pl-7 text-xs leading-5 text-current/80">
+                <AlertDescription className="max-h-32 overflow-auto break-words pl-7 pr-1 text-xs leading-5 text-current/85">
                   {toast.message}
                 </AlertDescription>
               </Alert>

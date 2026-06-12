@@ -12,6 +12,7 @@ interface ModelApiSettingsSectionProps {
   apiKey: string;
   modelName: string;
   aiEnhance: boolean;
+  locked: boolean;
   endpointInvalid: boolean;
   apiKeyInvalid: boolean;
   maskedTextStyle: CSSProperties;
@@ -30,6 +31,7 @@ export function ModelApiSettingsSection({
   apiKey,
   modelName,
   aiEnhance,
+  locked,
   endpointInvalid,
   apiKeyInvalid,
   maskedTextStyle,
@@ -40,7 +42,7 @@ export function ModelApiSettingsSection({
   onEndpointTouched,
   onApiKeyTouched,
 }: ModelApiSettingsSectionProps) {
-  const disabled = !aiEnhance;
+  const disabled = locked || !aiEnhance;
   const disabledClass = disabled ? 'opacity-50' : '';
 
   return (
@@ -57,7 +59,7 @@ export function ModelApiSettingsSection({
               BETA
             </span>
           </div>
-          <Switch checked={aiEnhance} onCheckedChange={onAiEnhanceChange} />
+          <Switch checked={aiEnhance} disabled={locked} onCheckedChange={onAiEnhanceChange} />
         </div>
       </div>
 
@@ -99,11 +101,11 @@ export function ModelApiSettingsSection({
             <Input
               type="text"
               ref={apiKeyInputRef}
-              value={apiKey}
+              value={locked ? 'Configured on server' : apiKey}
               onChange={(e) => onApiKeyChange(e.target.value)}
               disabled={disabled}
               autoComplete="off"
-              style={maskedTextStyle}
+              style={locked ? undefined : maskedTextStyle}
               onBlur={() => onApiKeyTouched(true)}
               aria-invalid={apiKeyInvalid}
               className={cn(

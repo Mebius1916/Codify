@@ -4,6 +4,8 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { convertHtmlCssToTailwind } from '../../../../converters/index.ts'
+import { env } from '../../config/env.ts'
+import { formatUserError, type AiEnhanceStage } from '../../errors/userErrorEvents.ts'
 import { formatError, formatErrorCause } from '../../logging/loggingUtils.ts'
 import { LoggingService } from '../../logging/loggingService.ts'
 import { RenderService } from '../../render/renderService.ts'
@@ -17,8 +19,6 @@ import { buildRenderableHtml } from './utils/buildRenderableHtml.ts'
 const FIGMA_AI_LLM_TIMEOUT_MS = 1 * 60_000
 const LOGGABLE_TAILWIND_FRAGMENT_MAX_LENGTH = 20_000
 const FIGMA_AI_DEBUG_IMAGE_DIR = resolve(process.cwd(), '.debug', 'figma-ai-enhance')
-
-type AiEnhanceStage = 'render_baseline' | 'render_current' | 'visual_attention' | 'agent_visual_repair'
 
 interface AiEnhanceStageReporter {
   run<T>(stage: AiEnhanceStage, task: () => Promise<T>): Promise<T>
@@ -73,7 +73,13 @@ export class FigmaAiEnhanceService {
     }
 
     try {
-      if (!input.dto.aiOptions?.apiKey?.trim()) throw new BadRequestException('AI enhance 缺少 apiKey')
+      const apiKey = env.model.apiKey.trim() || input.dto.aiOptions?.apiKey?.trim() || ''
+      if (!apiKey) {
+        throw new BadRequestException(formatUserError({ type: 'ai.model_api_key.missing' }))
+      }
+      if (!input.dto.aiOptions?.baseUrl?.trim()) {
+        throw new BadRequestException(formatUserError({ type: 'ai.model_endpoint.missing' }))
+      }
       const aiOptions = input.dto.aiOptions
 
       this.loggingService.info('AI enhance started', {
@@ -147,7 +153,7 @@ export class FigmaAiEnhanceService {
           visualEvidencePngBase64: visualAttention.visualEvidencePngBase64,
           html: currentHtml,
           model: aiOptions.model?.trim() || 'gemini-2.5-flash',
-          apiKey: aiOptions.apiKey.trim(),
+          apiKey,
           baseUrl: aiOptions.baseUrl.trim(),
           temperature: aiOptions.temperature ?? 0,
           timeout: FIGMA_AI_LLM_TIMEOUT_MS,
@@ -220,7 +226,7 @@ export class FigmaAiEnhanceService {
             errorCause: formatErrorCause(error),
             stack: error instanceof Error ? error.stack : undefined,
           })
-          throw error
+          throw new Error(formatUserError({ type: 'ai.enhance_stage.failed', stage, runId, error }))
         }
       },
     }

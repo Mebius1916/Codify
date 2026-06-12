@@ -13,6 +13,9 @@ import { Brand } from '@/ui/Brand';
 import settingIconUrl from "@assets/Setting.svg";
 import { WorkspaceSettingsModal } from '@/features/settings';
 import { Button } from '@/ui/button';
+import { showToast } from '@/ui/appToast';
+import { formatUnknownError } from '@/utils/errorMessage';
+import { modelApiEnvConfig } from '@/config/modelApiEnv';
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -33,12 +36,22 @@ export function HomePage() {
 
   const handleConvert = async () => {
     if (!figmaToken.trim()) {
+      showToast({
+        title: 'Figma Token 缺失',
+        message: '请先在 Settings 填写 Figma Token，否则后端无法访问 Figma 文件数据。',
+        variant: 'error',
+      });
       setShouldHighlightFigmaToken(true);
       setShouldHighlightModelApi(false);
       setSettingsOpen(true);
       return;
     }
-    if (aiEnhance && (!modelApiEndpoint.trim() || !modelApiKey.trim())) {
+    if (aiEnhance && !modelApiEnvConfig.locked && (!modelApiEndpoint.trim() || !modelApiKey.trim())) {
+      showToast({
+        title: '模型配置缺失',
+        message: 'AI 增强已开启，请先在 Settings 填写 Model API Endpoint 和 Model API Key。',
+        variant: 'error',
+      });
       setShouldHighlightFigmaToken(false);
       setShouldHighlightModelApi(true);
       setSettingsOpen(true);
@@ -48,8 +61,16 @@ export function HomePage() {
     setShouldHighlightModelApi(false);
     const result = await parse(url);
     if (result) {
-      await runConvertFlow(result);
-      navigate(`/editor`);
+      try {
+        await runConvertFlow(result);
+        navigate(`/editor`);
+      } catch (error) {
+        showToast({
+          title: '转换结果写入失败',
+          message: formatUnknownError(error, '转换已完成，但写入编辑器文件时失败，请检查浏览器存储空间或刷新后重试。'),
+          variant: 'error',
+        });
+      }
     }
   };
 

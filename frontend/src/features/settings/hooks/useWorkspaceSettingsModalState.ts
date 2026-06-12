@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useUiStore } from '@/features/workspace/store/uiStore'
+import { modelApiEnvConfig } from '@/config/modelApiEnv'
 
 interface WorkspaceSettingsModalStateOptions {
   open: boolean
@@ -72,8 +73,8 @@ export function useWorkspaceSettingsModalState({
     const shouldHighlightToken = Boolean(highlightFigmaToken) && !figmaToken.trim()
     setFigmaTokenTouched(shouldHighlightToken)
 
-    const shouldHighlightModelApiEndpoint = Boolean(highlightModelApiConfig) && !modelApiEndpoint.trim()
-    const shouldHighlightModelApiKey = Boolean(highlightModelApiConfig) && !modelApiKey.trim()
+    const shouldHighlightModelApiEndpoint = !modelApiEnvConfig.locked && Boolean(highlightModelApiConfig) && !modelApiEndpoint.trim()
+    const shouldHighlightModelApiKey = !modelApiEnvConfig.locked && Boolean(highlightModelApiConfig) && !modelApiKey.trim()
     setModelApiEndpointTouched(shouldHighlightModelApiEndpoint)
     setModelApiKeyTouched(shouldHighlightModelApiKey)
 
@@ -115,8 +116,8 @@ export function useWorkspaceSettingsModalState({
   }
 
   const figmaTokenInvalid = !figmaTokenDraft.trim() && figmaTokenTouched
-  const modelApiEndpointInvalid = aiEnhanceDraft && !apiEndpoint.trim() && modelApiEndpointTouched
-  const modelApiKeyInvalid = aiEnhanceDraft && !apiKey.trim() && modelApiKeyTouched
+  const modelApiEndpointInvalid = !modelApiEnvConfig.locked && aiEnhanceDraft && !apiEndpoint.trim() && modelApiEndpointTouched
+  const modelApiKeyInvalid = !modelApiEnvConfig.locked && aiEnhanceDraft && !apiKey.trim() && modelApiKeyTouched
 
   return {
     framework,
@@ -151,6 +152,7 @@ export function useWorkspaceSettingsModalState({
     modelApiKeyInputRef,
     modelApiEndpointInvalid,
     modelApiKeyInvalid,
+    modelApiLocked: modelApiEnvConfig.locked,
 
     handleSave,
   }
