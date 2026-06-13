@@ -8,8 +8,10 @@ import {
   Post,
   ServiceUnavailableException,
   StreamableFile,
+  UseGuards,
 } from '@nestjs/common'
 import { Readable } from 'node:stream'
+import { AuthGuard } from '../auth/authGuard.ts'
 import { formatError } from '../logging/loggingUtils.ts'
 
 interface DownloadImageDto {
@@ -23,6 +25,7 @@ export class AssetController {
   @Post('/download-image')
   @HttpCode(200)
   @Header('Cache-Control', 'no-store')
+  @UseGuards(AuthGuard)
   async downloadImage(@Body() body: DownloadImageDto) {
     let parsedUrl: URL
     try {

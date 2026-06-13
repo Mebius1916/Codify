@@ -1,4 +1,5 @@
-import { Body, Controller, Post, Req, Res } from '@nestjs/common'
+import { Body, Controller, Post, Req, Res, UseGuards } from '@nestjs/common'
+import { AuthGuard } from '../../auth/authGuard.ts'
 import type { IncomingMessage } from 'node:http'
 import type { ConvertFigmaDto } from '../dto/convertFigmaDto.ts'
 import { FigmaService } from '../services/figmaService.ts'
@@ -22,6 +23,7 @@ export class FigmaController {
   constructor(private readonly figmaService: FigmaService) {}
 
   @Post('/convert')
+  @UseGuards(AuthGuard)
   async convert(
     @Body() body: ConvertFigmaDto,
     @Req() req: IncomingMessage,

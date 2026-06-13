@@ -40,6 +40,7 @@ export async function convertFigma({
   try {
     resp = await fetch(`${baseUrl}/api/figma/convert`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/x-ndjson',

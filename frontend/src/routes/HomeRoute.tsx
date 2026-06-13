@@ -17,6 +17,7 @@ import { showToast } from '@/ui/appToast';
 import { formatUnknownError } from '@/utils/errorMessage';
 import { modelApiEnvConfig } from '@/config/modelApiEnv';
 import { parseFigmaRoomUrl } from '@/features/figma/utils/figmaRoom';
+import { AuthAction, LoginDialog, authClient } from '@/features/auth';
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -34,8 +35,16 @@ export function HomePage() {
   }));
   const [shouldHighlightFigmaToken, setShouldHighlightFigmaToken] = useState(false);
   const [shouldHighlightModelApi, setShouldHighlightModelApi] = useState(false);
+  const { data: session } = authClient.useSession();
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [loginPrompt, setLoginPrompt] = useState<string | undefined>();
 
   const handleConvert = async () => {
+    if (!session) {
+      setLoginPrompt('Sign in to convert Figma files and open the editor.');
+      setLoginOpen(true);
+      return;
+    }
     if (!figmaToken.trim()) {
       showToast({
         title: 'Figma Token 缺失',
@@ -84,35 +93,40 @@ export function HomePage() {
 
       <div className="relative z-10 flex h-[64px] w-full items-center justify-between px-12">
         <Brand />
-        <div className="inline-flex items-center rounded-full border border-[#2A2F4C] bg-[#15182A]/70 p-1 shadow-sm backdrop-blur-sm">
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="h-8 rounded-full px-4 text-slate-300 hover:bg-white/5"
-            title="GitHub"
-          >
-            <a href="https://github.com/Mebius1916/Codify" target="_blank" rel="noreferrer">
-              GitHub
-            </a>
-          </Button>
-          <div className="mx-1 h-6 w-px bg-white/10" />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-full hover:bg-white/5 group"
-            onClick={() => setSettingsOpen(true)}
-            title="Settings"
-          >
-            <img
-              src={settingIconUrl}
-              alt=""
-              className="h-4 w-4 opacity-70 group-hover:opacity-100 transition-opacity"
-              style={{ filter: "brightness(0) invert(1)" }}
-            />
-          </Button>
-        </div>
+        {session ? (
+          <AuthAction onOpenSettings={() => setSettingsOpen(true)} />
+        ) : (
+          <div className="inline-flex items-center rounded-full border border-[#2A2F4C] bg-[#15182A]/70 p-1 shadow-sm backdrop-blur-sm">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 rounded-full px-3 text-slate-300 hover:bg-white/5"
+              title="Sign in"
+              onClick={() => {
+                setLoginPrompt(undefined);
+                setLoginOpen(true);
+              }}
+            >
+              Sign in
+            </Button>
+            <div className="mx-1 h-6 w-px bg-white/10" />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full p-0 hover:bg-white/5 group"
+              onClick={() => setSettingsOpen(true)}
+              title="Settings"
+            >
+              <img
+                src={settingIconUrl}
+                alt=""
+                className="h-4 w-4 opacity-70 group-hover:opacity-100 transition-opacity"
+                style={{ filter: "brightness(0) invert(1)" }}
+              />
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="relative z-10 mx-auto flex h-[calc(100%-64px)] w-full max-w-5xl flex-col items-center justify-center px-6">
@@ -191,6 +205,7 @@ export function HomePage() {
         highlightFigmaToken={shouldHighlightFigmaToken}
         highlightModelApiConfig={shouldHighlightModelApi}
       />
+      <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} prompt={loginPrompt} />
     </div>
   );
 }

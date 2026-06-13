@@ -31,6 +31,7 @@ async function fetchAsset(url: string): Promise<DownloadedAsset> {
   try {
     response = await fetch(`${baseUrl}/api/assets/download-image`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
     })
