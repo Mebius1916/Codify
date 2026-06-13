@@ -1,6 +1,7 @@
 import { FeatureProvider } from '@/features/workspace/providers/featureFlags';
 import { closeFile, openFile } from '@/features/workspace/services/workspaceService';
 import { useEditorStore } from '@/features/workspace/store/editorStore';
+import { Navigate, useParams } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { useFileTreeActions } from "@/features/fileTree";
 import { WorkbenchHeader } from "@/features/workbench";
@@ -11,6 +12,7 @@ import { EditorPane, PreviewPane, SidebarPane, Topbar } from '@/features/workben
 
 
 export function EditorPage() {
+  const { roomId } = useParams()
   const fileTreeActions = useFileTreeActions();
   const { activeFile, openFiles } = useEditorStore(
     useShallow((state) => ({
@@ -20,6 +22,8 @@ export function EditorPage() {
   );
   const [previewRevision, setPreviewRevision] = useState(0);
   const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
+
+  if (!roomId) return <Navigate to="/" replace />
 
   return (
     <FeatureProvider features={{ fileTree: true, toolbar: false }}>
@@ -41,7 +45,7 @@ export function EditorPage() {
         <div className="flex flex-1 overflow-hidden relative border-t border-[#2a2f4c]">
           {!isPreviewFullscreen && <SidebarPane fileTreeActions={fileTreeActions} />}
 
-          {!isPreviewFullscreen && <EditorPane key="editor" />}
+          {!isPreviewFullscreen && <EditorPane key="editor" roomId={roomId} />}
 
           <PreviewPane key={`preview:${previewRevision}`} isFullscreen={isPreviewFullscreen} />
         </div>

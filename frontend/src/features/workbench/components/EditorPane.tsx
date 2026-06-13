@@ -6,12 +6,16 @@ const LazyEditor = lazy(async () => {
   return { default: mod.Editor };
 });
 
-export function EditorPane() {
+interface EditorPaneProps {
+  roomId: string
+}
+
+export function EditorPane({ roomId }: EditorPaneProps) {
   return (
     <div className="flex flex-1 flex-col overflow-hidden relative">
       <div className="flex-1 overflow-hidden relative">
         <Suspense fallback={<Loading text="正在初始化编辑器..." />}>
-          <LazyEditor />
+          <LazyEditor roomId={roomId} />
         </Suspense>
       </div>
     </div>

@@ -18,8 +18,8 @@ export interface ContentRepository {
 const INDEX_KEY = '__index__'
 const makeFileKey = (path: string) => `file:${path}`
 
-export function createLocalForageContentRepository(): ContentRepository {
-  const store = localforage.createInstance({ name: 'codeflow-content' })
+export function createLocalForageContentRepository(roomId: string): ContentRepository {
+  const store = localforage.createInstance({ name: `codeflow-content:${roomId}` })
 
   const loadIndex = async (): Promise<string[]> => {
     const raw = await store.getItem<unknown>(INDEX_KEY)

@@ -16,6 +16,7 @@ import { Button } from '@/ui/button';
 import { showToast } from '@/ui/appToast';
 import { formatUnknownError } from '@/utils/errorMessage';
 import { modelApiEnvConfig } from '@/config/modelApiEnv';
+import { parseFigmaRoomUrl } from '@/features/figma/utils/figmaRoom';
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -62,8 +63,9 @@ export function HomePage() {
     const result = await parse(url);
     if (result) {
       try {
-        await runConvertFlow(result);
-        navigate(`/editor`);
+        const { roomId } = parseFigmaRoomUrl(url);
+        await runConvertFlow(result, roomId);
+        navigate(`/rooms/${roomId}`);
       } catch (error) {
         showToast({
           title: '转换结果写入失败',

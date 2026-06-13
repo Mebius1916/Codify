@@ -8,14 +8,18 @@ import { useMonacoBinding } from '../monacoBinding/useMonacoBinding'
 import { MonacoEditorWrapper } from './features/MonacoEditorWrapper'
 import { useContentLayer } from '@/features/workspace/hooks/useContentLayer'
 
-export function Editor() {
+interface EditorProps {
+  roomId: string
+}
+
+export function Editor({ roomId }: EditorProps) {
   const activeFile = useEditorStore((state) => state.activeFile)
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null)
   const editorDomRef = useRef<HTMLElement | null>(null)
   const [isEditorMounted, setIsEditorMounted] = useState(false)
   const [isMonacoReady, setIsMonacoReady] = useState(false)
 
-  const { isContentReady } = useContentLayer()
+  const { isContentReady } = useContentLayer(roomId)
 
   useEffect(() => {
     if (!activeFile) return

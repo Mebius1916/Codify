@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useFigmaUrlParser } from '@/features/figma/hooks/useFigmaUrlParser';
 import { ConvertStageMiniStatus } from '@/features/figma/components/ConvertStageMiniStatus';
 import { runConvertFlow } from '@/features/figma/services/runConvertFlow';
+import { parseFigmaRoomUrl } from '@/features/figma/utils/figmaRoom';
 import { showToast } from '@/ui/appToast';
 import { formatUnknownError } from '@/utils/errorMessage';
 
@@ -19,8 +20,9 @@ export function SearchBox() {
     const result = await parse(url);
     if (result) {
       try {
-        await runConvertFlow(result);
-        navigate(`/editor`);
+        const { roomId } = parseFigmaRoomUrl(url);
+        await runConvertFlow(result, roomId);
+        navigate(`/rooms/${roomId}`);
       } catch (error) {
         showToast({
           title: '转换结果写入失败',

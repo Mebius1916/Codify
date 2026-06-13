@@ -2,8 +2,19 @@ import { createLocalForageContentRepository, type ContentRepository, type FileCo
 import { useEditorStore } from '../store/editorStore'
 
 let contentRepository: ContentRepository | null = null
+let currentRoomId: string | null = null
+
+export function setWorkspaceRoom(roomId: string) {
+  const nextRoomId = roomId.trim()
+  if (!nextRoomId) throw new Error('workspace roomId is required')
+  if (nextRoomId === currentRoomId && contentRepository) return
+  currentRoomId = nextRoomId
+  contentRepository = createLocalForageContentRepository(currentRoomId)
+}
+
 const getRepository = () => {
-  if (!contentRepository) contentRepository = createLocalForageContentRepository()
+  if (!currentRoomId) throw new Error('workspace roomId is not initialized')
+  if (!contentRepository) contentRepository = createLocalForageContentRepository(currentRoomId)
   return contentRepository
 }
 

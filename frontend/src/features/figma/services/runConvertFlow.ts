@@ -2,10 +2,13 @@ import { GENERATED_PAGE_RESET_CSS } from '@codify/design2code'
 import { createLocalForageContentRepository } from '@/features/workspace/repository/contentRepository'
 import { useEditorStore } from '@/features/workspace/store/editorStore'
 import { useUiStore } from '@/features/workspace/store/uiStore'
+import { setWorkspaceRoom } from '@/features/workspace/services/workspaceService'
 import type { FigmaConvertResult } from '../interfaces/model'
 import { formatCss, formatHtml } from '@/utils/format'
 
-export async function runConvertFlow(result: FigmaConvertResult) {
+export async function runConvertFlow(result: FigmaConvertResult, roomId: string) {
+  setWorkspaceRoom(roomId)
+
   const size = result.codegenResult?.size
   const nextSize = size?.width && size?.height ? size : undefined
   useUiStore.getState().setPreviewContentSize(nextSize ?? null)
@@ -22,6 +25,6 @@ export async function runConvertFlow(result: FigmaConvertResult) {
   initializeFiles(files)
   openFile('src/index.html')
 
-  const repo = createLocalForageContentRepository()
+  const repo = createLocalForageContentRepository(roomId)
   await repo.replaceAll(files)
 }

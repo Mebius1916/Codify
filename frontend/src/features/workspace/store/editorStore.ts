@@ -25,7 +25,19 @@ const createEditorState: StateCreator<EditorState> = (set, get) => ({
       fileKeys: [], // 所有文件的路径列表
 
       initializeFiles: (files: Record<string, string>) => {
-        set({ files, fileKeys: Object.keys(files) })
+        const fileKeys = Object.keys(files)
+        const { activeFile, openFiles } = get()
+        const nextOpenFiles = openFiles.filter((path) => fileKeys.includes(path))
+        const nextActiveFile = activeFile && fileKeys.includes(activeFile)
+          ? activeFile
+          : nextOpenFiles[0] ?? fileKeys[0] ?? null
+
+        set({
+          files,
+          fileKeys,
+          openFiles: nextActiveFile && nextOpenFiles.length === 0 ? [nextActiveFile] : nextOpenFiles,
+          activeFile: nextActiveFile,
+        })
       },
 
       openFile: (path: string) => {
