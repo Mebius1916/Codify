@@ -22,7 +22,7 @@ export function SearchBox() {
       try {
         const { roomId } = parseFigmaRoomUrl(url);
         await runConvertFlow(result, roomId);
-        navigate(`/rooms/${roomId}`);
+        navigate(`/${roomId}`);
       } catch (error) {
         showToast({
           title: '转换结果写入失败',
