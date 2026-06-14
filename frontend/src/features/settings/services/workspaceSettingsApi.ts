@@ -3,6 +3,12 @@ import type { WorkspaceSettings } from '@/features/workspace/store/uiStore'
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() || window.location.origin
 
+async function readJsonOrNull<T>(response: Response): Promise<T | null> {
+  const body = await response.text()
+  if (!body.trim()) return null
+  return JSON.parse(body) as T
+}
+
 export async function fetchWorkspaceSettings(): Promise<Partial<WorkspaceSettings> | null> {
   let response: Response
 
@@ -18,7 +24,7 @@ export async function fetchWorkspaceSettings(): Promise<Partial<WorkspaceSetting
     throw new Error(await readResponseErrorMessage(response, '读取工作区设置失败'))
   }
 
-  return (await response.json()) as Partial<WorkspaceSettings> | null
+  return await readJsonOrNull<Partial<WorkspaceSettings>>(response)
 }
 
 export async function saveWorkspaceSettings(settings: WorkspaceSettings): Promise<WorkspaceSettings> {
@@ -41,5 +47,6 @@ export async function saveWorkspaceSettings(settings: WorkspaceSettings): Promis
     throw new Error(await readResponseErrorMessage(response, '保存工作区设置失败'))
   }
 
-  return (await response.json()) as WorkspaceSettings
+  const savedSettings = await readJsonOrNull<WorkspaceSettings>(response)
+  return savedSettings ?? settings
 }

@@ -34,6 +34,11 @@ export const auth = betterAuth({
   database: authDatabase,
   trustedOrigins: env.auth.trustedOrigins,
   socialProviders,
+  account: {
+    accountLinking: {
+      updateUserInfoOnLink: true,
+    },
+  },
 })
 
 export type AuthSession = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>
