@@ -58,6 +58,7 @@ export function WorkspaceSettingsModal({
     modelApiEndpointInvalid,
     modelApiKeyInvalid,
     modelApiLocked,
+    isSaving,
     handleSave,
   } = useWorkspaceSettingsModalState({
     open,
@@ -91,7 +92,7 @@ export function WorkspaceSettingsModal({
           className="flex flex-1 flex-col overflow-hidden"
           onSubmit={(e) => {
             e.preventDefault();
-            handleSave();
+            void handleSave();
           }}
         >
           <DialogBody className="min-h-0 flex-1 overflow-hidden p-0">
@@ -138,11 +139,11 @@ export function WorkspaceSettingsModal({
           </DialogBody>
 
           <DialogFooter className="bg-[#0D111C] px-5 py-4">
-            <Button variant="ghost" type="button" onClick={onClose} className="rounded-lg">
+            <Button variant="ghost" type="button" onClick={onClose} disabled={isSaving} className="rounded-lg">
               Cancel
             </Button>
-            <Button type="submit" className="rounded-lg bg-[#3558FF] px-4 hover:bg-[#2F4FE6]">
-              Save Changes
+            <Button type="submit" disabled={isSaving} className="rounded-lg bg-[#3558FF] px-4 hover:bg-[#2F4FE6]">
+              {isSaving ? 'Saving...' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </form>

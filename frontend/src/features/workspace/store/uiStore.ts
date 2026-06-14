@@ -8,9 +8,22 @@ interface PreviewContentSize {
   height: number
 }
 
+export interface WorkspaceSettings {
+  framework: string
+  stylingSystem: string
+  modelApiEndpoint: string
+  modelApiKey: string
+  modelName: string
+  aiEnhance: boolean
+  useConvertCache: boolean
+  figmaToken: string
+}
+
 interface UiState {
   previewContentSize: PreviewContentSize | null
   previewZoomPercent: number
+  framework: string
+  stylingSystem: string
   modelApiEndpoint: string
   modelApiKey: string
   modelName: string
@@ -20,18 +33,17 @@ interface UiState {
 
   setPreviewContentSize: (size: PreviewContentSize | null) => void
   setPreviewZoomPercent: (zoomPercent: number) => void
+  setFramework: (framework: string) => void
+  setStylingSystem: (stylingSystem: string) => void
   setModelApiEndpoint: (endpoint: string) => void
   setModelApiKey: (key: string) => void
   setModelName: (model: string) => void
   setAiEnhance: (enabled: boolean) => void
   setUseConvertCache: (enabled: boolean) => void
   setFigmaToken: (token: string) => void
+  applyWorkspaceSettings: (settings: Partial<WorkspaceSettings>) => void
+  getWorkspaceSettings: () => WorkspaceSettings
 }
-
-type SetState<T> = (
-  partial: T | Partial<T> | ((state: T) => T | Partial<T>),
-  replace?: boolean
-) => void
 
 // 创建一个 localforage 实例专门用于 UI store
 const uiStorage = localforage.createInstance({
@@ -40,9 +52,11 @@ const uiStorage = localforage.createInstance({
 
 export const useUiStore = create<UiState>()(
   persist(
-    (set: SetState<UiState>) => ({
+    (set, get) => ({
       previewContentSize: null,
       previewZoomPercent: 100,
+      framework: 'HTML + CSS',
+      stylingSystem: 'CSS',
       modelApiEndpoint: modelApiEnvConfig.endpoint,
       modelApiKey: modelApiEnvConfig.locked ? 'Configured on server' : '',
       modelName: modelApiEnvConfig.model || 'gpt-4o',
@@ -55,6 +69,14 @@ export const useUiStore = create<UiState>()(
       },
       setPreviewZoomPercent: (zoomPercent: number) => {
         set({ previewZoomPercent: zoomPercent })
+      },
+
+      setFramework: (framework: string) => {
+        set({ framework })
+      },
+
+      setStylingSystem: (stylingSystem: string) => {
+        set({ stylingSystem })
       },
 
       setModelApiEndpoint: (endpoint: string) => {
@@ -97,6 +119,27 @@ export const useUiStore = create<UiState>()(
         set({ figmaToken: token })
       },
 
+      applyWorkspaceSettings: (settings: Partial<WorkspaceSettings>) => {
+        set((state) => applyModelApiEnvDefaults({
+          ...state,
+          ...settings,
+        }))
+      },
+
+      getWorkspaceSettings: (): WorkspaceSettings => {
+        const state = get()
+        return {
+          framework: state.framework,
+          stylingSystem: state.stylingSystem,
+          modelApiEndpoint: state.modelApiEndpoint,
+          modelApiKey: state.modelApiKey,
+          modelName: state.modelName,
+          aiEnhance: state.aiEnhance,
+          useConvertCache: state.useConvertCache,
+          figmaToken: state.figmaToken,
+        }
+      },
+
     }),
     {
       name: 'ui-storage',
@@ -105,6 +148,8 @@ export const useUiStore = create<UiState>()(
       partialize: (state) => ({
         previewContentSize: state.previewContentSize,
         previewZoomPercent: state.previewZoomPercent,
+        framework: state.framework,
+        stylingSystem: state.stylingSystem,
         modelApiEndpoint: state.modelApiEndpoint,
         modelApiKey: state.modelApiKey,
         modelName: state.modelName,

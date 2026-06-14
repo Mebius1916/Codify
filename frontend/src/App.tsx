@@ -3,8 +3,11 @@ import { HomePage } from "./routes/HomeRoute";
 import { EditorPage } from "./routes/EditorRoute";
 import { AppToaster } from "./ui/appToast";
 import { RequireAuth } from "./features/auth";
+import { useWorkspaceSettingsSync } from "./features/settings/hooks/useWorkspaceSettingsSync";
 
 export default function App() {
+  useWorkspaceSettingsSync();
+
   return (
     <>
       <Routes>

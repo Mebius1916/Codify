@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useUiStore } from '@/features/workspace/store/uiStore'
 import { modelApiEnvConfig } from '@/config/modelApiEnv'
+import { authClient } from '@/features/auth/lib/authClient'
+import { showToast } from '@/ui/appToast'
+import { saveWorkspaceSettings } from '../services/workspaceSettingsApi'
 
 interface WorkspaceSettingsModalStateOptions {
   open: boolean
@@ -15,42 +18,38 @@ export function useWorkspaceSettingsModalState({
   highlightFigmaToken,
   highlightModelApiConfig,
 }: WorkspaceSettingsModalStateOptions) {
+  const { data: session } = authClient.useSession()
   const {
+    framework: storedFramework,
+    stylingSystem: storedStylingSystem,
     modelApiEndpoint,
     modelApiKey,
     modelName,
     aiEnhance,
     useConvertCache,
     figmaToken,
-    setModelApiEndpoint,
-    setModelApiKey,
-    setModelName,
-    setAiEnhance,
-    setUseConvertCache,
-    setFigmaToken,
+    applyWorkspaceSettings,
   } = useUiStore((state) => ({
+    framework: state.framework,
+    stylingSystem: state.stylingSystem,
     modelApiEndpoint: state.modelApiEndpoint,
     modelApiKey: state.modelApiKey,
     modelName: state.modelName,
     aiEnhance: state.aiEnhance,
     useConvertCache: state.useConvertCache,
     figmaToken: state.figmaToken,
-    setModelApiEndpoint: state.setModelApiEndpoint,
-    setModelApiKey: state.setModelApiKey,
-    setModelName: state.setModelName,
-    setAiEnhance: state.setAiEnhance,
-    setUseConvertCache: state.setUseConvertCache,
-    setFigmaToken: state.setFigmaToken,
+    applyWorkspaceSettings: state.applyWorkspaceSettings,
   }))
 
-  const [framework, setFramework] = useState('HTML + CSS')
-  const [stylingSystem, setStylingSystem] = useState('CSS')
+  const [framework, setFramework] = useState(storedFramework)
+  const [stylingSystem, setStylingSystem] = useState(storedStylingSystem)
   const [apiEndpoint, setApiEndpoint] = useState(modelApiEndpoint)
   const [apiKey, setApiKey] = useState(modelApiKey)
   const [modelNameDraft, setModelNameDraft] = useState(modelName)
   const [aiEnhanceDraft, setAiEnhanceDraft] = useState(aiEnhance)
   const [useConvertCacheDraft, setUseConvertCacheDraft] = useState(useConvertCache)
   const [figmaTokenDraft, setFigmaTokenDraft] = useState(figmaToken)
+  const [isSaving, setIsSaving] = useState(false)
 
   const [figmaTokenTouched, setFigmaTokenTouched] = useState(false)
   const figmaTokenInputRef = useRef<HTMLInputElement | null>(null)
@@ -63,6 +62,8 @@ export function useWorkspaceSettingsModalState({
   useEffect(() => {
     if (!open) return
 
+    setFramework(storedFramework)
+    setStylingSystem(storedStylingSystem)
     setApiEndpoint(modelApiEndpoint)
     setApiKey(modelApiKey)
     setModelNameDraft(modelName)
@@ -102,17 +103,39 @@ export function useWorkspaceSettingsModalState({
     modelApiKey,
     modelName,
     open,
+    storedFramework,
+    storedStylingSystem,
     useConvertCache,
   ])
 
-  const handleSave = () => {
-    setModelApiEndpoint(apiEndpoint)
-    setModelApiKey(apiKey)
-    setModelName(modelNameDraft)
-    setAiEnhance(aiEnhanceDraft)
-    setUseConvertCache(useConvertCacheDraft)
-    setFigmaToken(figmaTokenDraft)
-    onClose()
+  const handleSave = async () => {
+    if (isSaving) return
+
+    setIsSaving(true)
+
+    try {
+      applyWorkspaceSettings({
+        framework,
+        stylingSystem,
+        modelApiEndpoint: apiEndpoint,
+        modelApiKey: apiKey,
+        modelName: modelNameDraft,
+        aiEnhance: aiEnhanceDraft,
+        useConvertCache: useConvertCacheDraft,
+        figmaToken: figmaTokenDraft,
+      })
+
+      if (session?.user.id) {
+        await saveWorkspaceSettings(useUiStore.getState().getWorkspaceSettings())
+      }
+
+      onClose()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '保存工作区设置失败'
+      showToast({ title: '保存失败', message, variant: 'error' })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const figmaTokenInvalid = !figmaTokenDraft.trim() && figmaTokenTouched
@@ -153,6 +176,7 @@ export function useWorkspaceSettingsModalState({
     modelApiEndpointInvalid,
     modelApiKeyInvalid,
     modelApiLocked: modelApiEnvConfig.locked,
+    isSaving,
 
     handleSave,
   }

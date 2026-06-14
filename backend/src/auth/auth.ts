@@ -6,7 +6,7 @@ import { env } from '../config/env.ts'
 
 mkdirSync(dirname(env.auth.databasePath), { recursive: true })
 
-const authDatabase = new DatabaseSync(env.auth.databasePath)
+export const authDatabase = new DatabaseSync(env.auth.databasePath)
 const socialProviders = {
   ...(env.auth.github.clientId && env.auth.github.clientSecret
     ? {
