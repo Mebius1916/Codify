@@ -9,6 +9,9 @@ export function inferSemanticTags(nodes: SimplifiedNode[]): SimplifiedNode[] {
         node.semanticTag = tagFromName;
       }
     }
+    if (node.children && node.children.length > 0) {
+      node.children = inferSemanticTags(node.children);
+    }
     return node;
   });
 }

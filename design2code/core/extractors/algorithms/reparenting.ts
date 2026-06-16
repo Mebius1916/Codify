@@ -8,64 +8,97 @@ import { canBeParent } from "../../utils/candidate-check.js";
 import { getOptions } from "../../../options.js";
 import type { SimplifiedLayout } from "../../types/simplified-types.js";
 
+type ParentCandidate = {
+  parent: SimplifiedNode;
+  fullyContained: boolean;
+  overlapRatio: number;
+  parentArea: number;
+};
+
 export function reparentNodes(nodes: SimplifiedNode[], parent?: SimplifiedNode): SimplifiedNode[] {
   if (nodes.length === 0) return [];
+  for (const node of nodes) {
+    if (node.needsDownstreamProcessing && node.children?.length) {
+      node.children = reparentNodes(node.children, node);
+    }
+  }
+
   const { reparenting } = getOptions();
   const partlyContainThreshold = reparenting.partlyContainThreshold;
 
-  const processingNodes = [...nodes];
+  const adoptedNodes = new Set<SimplifiedNode>();
+
+  for (let childIndex = 0; childIndex < nodes.length; childIndex++) {
+    const child = nodes[childIndex];
+    if (!child.absRect) continue;
+
+    let bestCandidate: ParentCandidate | null = null;
+    for (let parentIndex = 0; parentIndex < childIndex; parentIndex++) {
+      const candidateParent = nodes[parentIndex];
+      const candidate = getParentCandidate(
+        candidateParent,
+        child,
+        partlyContainThreshold
+      );
+      if (!candidate) continue;
+      if (!bestCandidate || isBetterParentCandidate(candidate, bestCandidate)) {
+        bestCandidate = candidate;
+      }
+    }
+
+    if (bestCandidate) {
+      adoptAsAbsoluteChild(bestCandidate.parent, child);
+      adoptedNodes.add(child);
+    }
+  }
 
   // 用于存储处理后的新子节点列表 (未被吃掉的节点)
-  const remainingNodes: SimplifiedNode[] = [];
-
-  while (processingNodes.length > 0) {
-    // 取出当前层级最低的节点
-    const parent = processingNodes.shift()!;
-
-    if (!canBeParent(parent) || !parent.absRect) {
-      remainingNodes.push(parent);
-      continue;
-    }
-
-    // 尝试在剩余的节点 (层级比它高的，即浮在它上面的) 中寻找孩子
-    const nonChildren: SimplifiedNode[] = [];
-    for (const potentialChild of processingNodes) {
-      if (!potentialChild.absRect) {
-        nonChildren.push(potentialChild);
-        continue;
-      }
-      // FULLY_CONTAIN：A 完全包含 B，直接建立父子关系
-      if (isRectContained(parent.absRect, potentialChild.absRect) &&
-        getRectArea(parent.absRect) >= getRectArea(potentialChild.absRect)) {
-        adoptAsAbsoluteChild(parent, potentialChild);
-      } else if (canBeParent(parent)) {
-        // Partly_CONTAIN：B 主要区域落在 A 内部，也建立父子关系
-        const overlapRatio = getOverlapRatio(parent.absRect, potentialChild.absRect);
-        if (
-          overlapRatio >= partlyContainThreshold &&
-          getRectArea(parent.absRect) >= getRectArea(potentialChild.absRect)
-        ) {
-          adoptAsAbsoluteChild(parent, potentialChild);
-        } else {
-          nonChildren.push(potentialChild);
-        }
-      } else {
-        nonChildren.push(potentialChild);
-      }
-    }
-
-    processingNodes.length = 0;
-    processingNodes.push(...nonChildren);
-
-    remainingNodes.push(parent);
-  }
-  detectAbsoluteChildrenInList(remainingNodes, parent,reparenting.absoluteOverlapThreshold);
+  const remainingNodes = nodes.filter(node => !adoptedNodes.has(node));
+  detectAbsoluteChildrenInList(remainingNodes, parent, reparenting.absoluteOverlapThreshold);
 
   return remainingNodes;
 }
 
+// 是否有资格成为父节点
+function getParentCandidate(
+  parent: SimplifiedNode,
+  child: SimplifiedNode,
+  partlyContainThreshold: number
+): ParentCandidate | null {
+  if (!canBeParent(parent) || !parent.absRect || !child.absRect) return null;
+
+  const parentArea = getRectArea(parent.absRect);
+  const childArea = getRectArea(child.absRect);
+  if (parentArea < childArea || childArea <= 0) return null;
+
+  const fullyContained = isRectContained(parent.absRect, child.absRect);
+  const overlapRatio = fullyContained ? 1 : getOverlapRatio(parent.absRect, child.absRect);
+  if (!fullyContained && overlapRatio < partlyContainThreshold) return null;
+
+  return {
+    parent,
+    fullyContained,
+    overlapRatio,
+    parentArea,
+  };
+}
+
+// 选择最匹配的父节点
+function isBetterParentCandidate(candidate: ParentCandidate, currentBest: ParentCandidate): boolean {
+  if (candidate.fullyContained !== currentBest.fullyContained) {
+    return candidate.fullyContained;
+  }
+  if (candidate.parentArea !== currentBest.parentArea) {
+    return candidate.parentArea < currentBest.parentArea;
+  }
+  if (candidate.overlapRatio !== currentBest.overlapRatio) {
+    return candidate.overlapRatio > currentBest.overlapRatio;
+  }
+  return false;
+}
+
 // AABB 碰撞检测，用于选出绝对定位的节点
-function detectAbsoluteChildrenInList(nodes: SimplifiedNode[], parent?: SimplifiedNode, threshold?:number) {
+function detectAbsoluteChildrenInList(nodes: SimplifiedNode[], parent?: SimplifiedNode, threshold?: number) {
   if (nodes.length < 2) return;
 
   // Align with FigmaToCode: If parent is Auto Layout, respect native layout.
@@ -127,8 +160,9 @@ function adoptAsAbsoluteChild(parent: SimplifiedNode, child: SimplifiedNode) {
     typeof parent.layout === "object" && parent.layout ? parent.layout : { mode: "none", sizing: {} };
   parent.layout = {
     ...parentBaseLayout,
-    position: "relative",
+    position: parentBaseLayout.position,
   };
+  parent.needsDownstreamProcessing = true;
   const childBaseLayout: SimplifiedLayout =
     typeof child.layout === "object" && child.layout ? child.layout : { mode: "none", sizing: {} };
   child.layout = {

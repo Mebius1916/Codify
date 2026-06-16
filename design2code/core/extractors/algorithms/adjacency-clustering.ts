@@ -7,6 +7,12 @@ import { buildContainerByGap } from "./utils/layout-inference.js";
 import { inferClusterDirection } from "./utils/infer-direction.js";
 
 export function groupNodesByAdjacency(nodes: SimplifiedNode[], parent?: SimplifiedNode): SimplifiedNode[] {
+  for (const node of nodes) {
+    if (node.needsDownstreamProcessing && node.children?.length) {
+      node.children = groupNodesByAdjacency(node.children, node);
+    }
+  }
+
   if (nodes.length < 2) return nodes;
 
   const candidates: { index: number; node: SimplifiedNode }[] = [];

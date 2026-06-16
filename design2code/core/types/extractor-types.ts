@@ -129,4 +129,6 @@ export interface SimplifiedNode {
     "p" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
   // visual fingerprint for list inference
   visualSignature?: string;
+  // internal marker: downstream reconstruction passes should enter this generated child layer
+  needsDownstreamProcessing?: boolean;
 }

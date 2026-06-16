@@ -27,10 +27,10 @@ export function runReconstructionPipeline(
   // 2. Reparenting 
   processedNodes = reparentNodes(processedNodes, parent);
 
-  const parentLayout = parent?.layout as SimplifiedLayout;
+  const parentLayout = parent?.layout as SimplifiedLayout | undefined;
   
-  if (parentLayout.mode !== "row" && 
-      parentLayout.mode !== "column") {
+  if (parentLayout?.mode !== "row" &&
+      parentLayout?.mode !== "column") {
       // 3. Layout Grouping 
       processedNodes = groupNodesByLayout(processedNodes, parent);
       // 4. Adjacency Clustering

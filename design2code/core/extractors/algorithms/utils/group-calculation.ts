@@ -1,6 +1,7 @@
 import type { SimplifiedNode } from "../../../types/extractor-types.js";
 import type { BoundingBox } from "../../../types/simplified-types.js";
 import { getUnionRect } from "../../../utils/geometry.js";
+import { shouldMergeAdjacentGroups } from "./spatial-merge.js";
 
 // 计算分组的宽高相似度代价
 export function calculateSimilarityCost(groups: SimplifiedNode[][]): number {
@@ -69,21 +70,6 @@ export function calculateAlignmentCost(groups: SimplifiedNode[][], direction: "r
   return validGroups > 0 ? totalSlope / validGroups : 0;
 }
 
-// 计算全局平均尺寸
-export function calculateGlobalAverageSize(nodes: SimplifiedNode[], axis: "x" | "y"): number {
-  const sizes = nodes.map(n => n.absRect).filter((r): r is BoundingBox => !!r)
-    .map(r => axis === "x" ? r.width : r.height);
-  if (sizes.length === 0) return 0;
-  return sizes.reduce((a, b) => a + b, 0) / sizes.length;
-}
-
-export function calculateGroupAverageSize(group: SimplifiedNode[], axis: "x" | "y"): number {
-  const sizes = group.map(n => n.absRect).filter((r): r is BoundingBox => !!r)
-    .map(r => axis === "x" ? r.width : r.height);
-  if (sizes.length === 0) return 0;
-  return sizes.reduce((a, b) => a + b, 0) / sizes.length;
-}
-
 // 投影分割算法
 export function splitByProjection(nodes: SimplifiedNode[], axis: "x" | "y", minGap: number): SimplifiedNode[][] {
   if (nodes.length <= 1) return nodes.length === 0 ? [] : [nodes];
@@ -122,39 +108,25 @@ export function splitByProjection(nodes: SimplifiedNode[], axis: "x" | "y", minG
 }
 
 // 局部分组合并
+// 1.主轴距离近
+// 2.
 export function mergeAdjacentGroupsWithMeta(
   groups: SimplifiedNode[][],
-  axis: "x" | "y",
-  globalAverage: number
+  axis: "x" | "y"
 ): { group: SimplifiedNode[]; merged: boolean }[] {
-  if (groups.length <= 1 || globalAverage === 0) {
+  if (groups.length <= 1) {
     return groups.map(group => ({ group, merged: false }));
   }
   const result: { group: SimplifiedNode[]; merged: boolean }[] = [];
-  let current: SimplifiedNode[] | null = null;
-  let mergedCount = 0;
   for (const group of groups) {
-    const avg = calculateGroupAverageSize(group, axis);
-    // 如果当前分组的平均值大于等于全局平均值，直接加入结果
-    if (avg >= globalAverage) {
-      // 将前面合并的分组先加入结果
-      if (current && current.length > 0) {
-        result.push({ group: current, merged: mergedCount > 1 });
-        current = null;
-        mergedCount = 0;
-      }
-      // 标记当前分组为未合并
+    const previous = result[result.length - 1];
+    if (previous && shouldMergeAdjacentGroups(previous.group, group, axis)) {
+      previous.group = previous.group.concat(group);
+      previous.merged = true;
+    } else {
       result.push({ group, merged: false });
-      continue;
     }
-    // 否则合并到当前分组，concat 拍平为一维数组
-    current = current ? current.concat(group) : group;
-    mergedCount += 1;
   }
-  if (current && current.length > 0) {
-    result.push({ group: current, merged: mergedCount > 1 });
-  }
-  // 返回的是扁平的对象结构
   return result;
 }
 

@@ -16,6 +16,7 @@ export interface CreateVirtualFrameOptions {
     "section" | "header" | "footer" | "nav" | "article" |
     "aside" | "main" | "p" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
   visualSignature?: string;
+  needsDownstreamProcessing?: boolean;
 }
 
 // 创建基础容器
@@ -28,7 +29,8 @@ export function createVirtualFrame(options: CreateVirtualFrameOptions): Simplifi
     layout,
     children,
     semanticTag,
-    visualSignature
+    visualSignature,
+    needsDownstreamProcessing = true
   } = options;
 
   if (layout && typeof layout === "object") {
@@ -56,7 +58,8 @@ export function createVirtualFrame(options: CreateVirtualFrameOptions): Simplifi
     absRect: unionRect, // 默认自带总包围盒
     children,
     semanticTag,
-    visualSignature
+    visualSignature,
+    needsDownstreamProcessing
   };
 
   if (layout) {
@@ -65,4 +68,3 @@ export function createVirtualFrame(options: CreateVirtualFrameOptions): Simplifi
 
   return node;
 }
-
