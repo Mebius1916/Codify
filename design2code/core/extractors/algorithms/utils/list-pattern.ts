@@ -1,7 +1,8 @@
 import type { SimplifiedNode } from "../../../types/extractor-types.js";
 import { createVirtualFrame } from "./virtual-node.js";
 import { buildContainerByGap } from "./layout-inference.js";
-import { getOptions } from "../../../../options.js";
+
+const MAX_GAP_STEP = 4;
 
 type PatternMatch = {
   loopItems: SimplifiedNode[];
@@ -101,8 +102,7 @@ function detectPattern(
     if (!allowGap) break;
 
     // 断裂间隔上限：不超过步长、不越界且不超过全局阈值
-    const { listPattern } = getOptions();
-    const maxGap = Math.min(length, nodes.length - p - length, listPattern.maxGapStep);
+    const maxGap = Math.min(length, nodes.length - p - length, MAX_GAP_STEP);
     if (maxGap < 1) break;
 
     const startGap = gapStep > 0 ? gapStep : 1;

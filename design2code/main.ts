@@ -5,11 +5,6 @@ import type {
 import codegen, { type CodegenResult } from "./core/codegen/index.js";
 import { simplifyRawFigmaObjectWithImages, type FetcherAdapter } from "./core/extractors/pipeline/design-extractor.js";
 import type { SimplifiedDesign } from "./core/types/extractor-types.js";
-import { getDefaultOptions, setOptions, type AlgorithmOptions } from "./options.js";
-
-interface ConvertFigmaToCodeOptions extends ExtractFigmaAsJSONOptions {
-  algorithmOptions?: Partial<AlgorithmOptions>;
-}
 
 interface ExtractFigmaAsJSONOptions {
   fileKey: string;
@@ -24,16 +19,9 @@ interface ExtractFigmaAsJSONOptions {
 
 export async function convertFigmaToCode(
   figmaData: GetFileResponse | GetFileNodesResponse,
-  options: ConvertFigmaToCodeOptions,
+  options: ExtractFigmaAsJSONOptions,
 ): Promise<CodegenResult> {
-  const { algorithmOptions, ...extractOptions } = options;
-
-  setOptions(getDefaultOptions());
-  if (algorithmOptions && Object.keys(algorithmOptions).length) {
-    setOptions(algorithmOptions);
-  }
-
-  const simplifiedDesign = await extractFigmaAsJSON(figmaData, extractOptions);
+  const simplifiedDesign = await extractFigmaAsJSON(figmaData, options);
   return codegen(simplifiedDesign);
 }
 

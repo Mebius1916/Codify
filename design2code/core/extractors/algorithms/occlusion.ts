@@ -3,7 +3,7 @@ import { subtractRect, getNodeBoundingBox } from "../../utils/geometry.js";
 import { hasVisibleStyles } from "../../utils/node-check.js";
 import type { BoundingBox } from "../../types/simplified-types.js";
 import type { TraversalContext } from "../../types/extractor-types.js";
-import { resolveNodeFills, isTransparentFillArray } from "./utils/check-fills.js";
+import { resolveNodeFills } from "./utils/check-fills.js";
 
 export function removeOccludedNodes(
   nodes: SimplifiedNode[],
@@ -99,18 +99,59 @@ function isOpaque(node: SimplifiedNode, globalVars?: TraversalContext["globalVar
   // 2. Opacity Check: Must be fully opaque
   if (node.opacity !== undefined && node.opacity < 1) return false;
 
-  // 3. Image Exception: Images are generally treated as opaque rectangles
-  if (node.type === "IMAGE") return true;
+  // 3. Blend modes are not simple rectangle coverage.
+  if (node.blendMode && node.blendMode !== "normal") return false;
 
-  // 4. Fill Check: Must have a visible fill
+  // 4. Images may contain transparent pixels or masks, so do not use them as full occluders.
+  if (node.type === "IMAGE") return false;
+
+  // 5. Fill Check: only a single fully opaque solid fill can block vision.
   const fills = resolveNodeFills(node, globalVars);
-  if (!fills || fills === "transparent") return false;
-  if (Array.isArray(fills)) {
-    if (isTransparentFillArray(fills)) return false;
-  }
+  if (!isSingleOpaqueSolidFill(fills)) return false;
 
-  // 5. Border Radius Check: Must be a sharp rectangle
+  // 6. Border Radius Check: Must be a sharp rectangle
   if (node.borderRadius && node.borderRadius !== "0px" && node.borderRadius !== "0") return false;
 
   return true;
+}
+
+function isSingleOpaqueSolidFill(fills: unknown): boolean {
+  if (typeof fills === "string") return isOpaqueCssColor(fills);
+  if (!Array.isArray(fills) || fills.length !== 1) return false;
+
+  const fill = fills[0];
+  if (typeof fill === "string") return isOpaqueCssColor(fill);
+  if (!fill || typeof fill !== "object") return false;
+
+  const paint = fill as { type?: string; visible?: boolean; opacity?: number; color?: unknown; blendMode?: string };
+  if (paint.visible === false) return false;
+  if ((paint.opacity ?? 1) < 1) return false;
+  if (paint.type !== "SOLID") return false;
+  if (paint.blendMode && paint.blendMode !== "normal") return false;
+  return typeof paint.color === "string" && isOpaqueCssColor(paint.color);
+}
+
+function isOpaqueCssColor(value: string): boolean {
+  const color = value.trim().toLowerCase();
+  if (!color || color === "transparent") return false;
+  if (color.startsWith("var(")) {
+    const fallback = getCssVarFallback(color);
+    return fallback ? isOpaqueCssColor(fallback) : false;
+  }
+  if (color === "black" || color === "white") return true;
+  if (/^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(color)) return true;
+  if (color.startsWith("rgb(")) return true;
+  if (!color.startsWith("rgba(")) return false;
+
+  const alpha = Number(color.replace("rgba(", "").replace(")", "").split(",")[3]);
+  return Number.isFinite(alpha) && alpha >= 1;
+}
+
+function getCssVarFallback(value: string): string | null {
+  const match = value.match(/^var\((.+)\)$/);
+  if (!match) return null;
+
+  const commaIndex = match[1].indexOf(",");
+  if (commaIndex === -1) return null;
+  return match[1].slice(commaIndex + 1).trim();
 }

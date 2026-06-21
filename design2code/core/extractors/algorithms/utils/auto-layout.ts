@@ -1,6 +1,9 @@
 
 import type { SimplifiedNode } from "../../../types/extractor-types.js";
 import { getNodeBoundingBox, getUnionRect } from "../../../utils/geometry.js";
+
+const GAP_TOLERANCE = 2;
+
 export function isAutoLayoutNode(node: SimplifiedNode): boolean {
   const layout = (node as any).layout;
   return (
@@ -38,9 +41,17 @@ export function computeAutoLayoutGap(
   }
 
   if (gaps.length === 0) return { gap: 0, uniform: true };
-  const baseGap = gaps[0];
-  const uniform = gaps.every((g) => g === baseGap);
-  return { gap: baseGap, uniform };
+  const gap = getMedian(gaps);
+  const uniform = gaps.every((g) => Math.abs(g - gap) <= GAP_TOLERANCE);
+  return { gap, uniform };
+}
+
+function getMedian(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1
+    ? sorted[mid]
+    : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
 // 

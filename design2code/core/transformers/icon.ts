@@ -1,6 +1,8 @@
 import type { Node as FigmaNode } from "@figma/rest-api-spec";
 import { hasVisibleStyles } from "../utils/node-check.js";
-import { getOptions } from "../../options.js";
+
+const DEFAULT_ICON_SIZE = 64;
+const ILLUSTRATION_ICON_SIZE = 300;
 
 // 基础图形
 const ICON_PRIMITIVE_TYPES: Set<string> = new Set([
@@ -59,13 +61,8 @@ export function isIcon(node: FigmaNode): boolean {
   
   if (width === 0 || height === 0) return false; // Invisible or empty
 
-  const { iconDetection } = getOptions();
-  // 默认阈值：64，插画阈值：300
-  const defaultSize = iconDetection.minSize;
-  const illustrationSize = iconDetection.maxSize;
-
   if (isPrimitive) {
-    if (width > defaultSize || height > defaultSize) return false;
+    if (width > DEFAULT_ICON_SIZE || height > DEFAULT_ICON_SIZE) return false;
   }
   
   if (isComplexVector) {
@@ -74,7 +71,7 @@ export function isIcon(node: FigmaNode): boolean {
 
   if (isContainer) {
     // 如果尺寸超大，直接拒绝（除非有特殊命名）
-    if (width > illustrationSize || height > illustrationSize) return false;
+    if (width > ILLUSTRATION_ICON_SIZE || height > ILLUSTRATION_ICON_SIZE) return false;
 
     // 命名检查
     const name = node.name.toLowerCase();
@@ -84,7 +81,7 @@ export function isIcon(node: FigmaNode): boolean {
       return checkChildrenRecursively(node).isValidIcon;
     }
 
-    const isLargeIcon = width > defaultSize || height > defaultSize;
+    const isLargeIcon = width > DEFAULT_ICON_SIZE || height > DEFAULT_ICON_SIZE;
 
     // 递归检查子节点
     const checkResult = checkChildrenRecursively(node);
@@ -140,4 +137,3 @@ function checkChildrenRecursively(node: FigmaNode): { isValidIcon: boolean; hasV
 
   return { isValidIcon: true, hasVectorContent };
 }
-

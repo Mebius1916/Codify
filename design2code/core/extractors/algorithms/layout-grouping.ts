@@ -1,12 +1,14 @@
 
 import type { SimplifiedNode } from "../../types/extractor-types.js";
-import { getOptions } from "../../../options.js";
 import { buildContainerByGap } from "./utils/layout-inference.js";
 import {
   mergeAdjacentGroupsWithMeta,
   splitByProjection,
   spliteByCost
 } from "./utils/group-calculation.js";
+
+const MIN_LAYOUT_GAP = 2;
+
 export function groupNodesByLayout(nodes: SimplifiedNode[], parent?: SimplifiedNode): SimplifiedNode[] {
   for (const node of nodes) {
     if (node.needsDownstreamProcessing && node.children?.length) {
@@ -38,12 +40,9 @@ export function groupNodesByLayout(nodes: SimplifiedNode[], parent?: SimplifiedN
     }
   }
 
-  const { layoutGap } = getOptions();
-  const minGap = typeof layoutGap.minGap === "number" ? layoutGap.minGap : 2;
-
   // 先全局投影切片
-  const spliteY = splitByProjection(flowNodes, "y", minGap);
-  const spliteX = splitByProjection(flowNodes, "x", minGap);
+  const spliteY = splitByProjection(flowNodes, "y", MIN_LAYOUT_GAP);
+  const spliteX = splitByProjection(flowNodes, "x", MIN_LAYOUT_GAP);
 
   // 后局部相邻合并
   const rowGroupMeta = mergeAdjacentGroupsWithMeta(spliteY, "y");

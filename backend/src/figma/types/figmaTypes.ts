@@ -1,4 +1,4 @@
-import type { AgentProgressEvent } from '@codify/agent'
+import type { AgentProgressEvent } from '../../../../agents/dist'
 
 export interface CodegenResult {
   html: string

@@ -1,5 +1,6 @@
 import { removeOccludedNodes } from "../algorithms/occlusion.js";
 import { reparentNodes } from "../algorithms/reparenting.js";
+import { mergeSpatialIcons } from "../algorithms/spatial-merging.js";
 import { groupNodesByLayout } from "../algorithms/layout-grouping.js";
 import { groupNodesByAdjacency } from "../algorithms/adjacency-clustering.js";
 import { inferSemanticTags } from "../algorithms/semantic-inference.js";
@@ -27,17 +28,20 @@ export function runReconstructionPipeline(
   // 2. Reparenting 
   processedNodes = reparentNodes(processedNodes, parent);
 
+  // 3. Merge fragmented icon leaves before broader layout grouping.
+  processedNodes = mergeSpatialIcons(processedNodes, parent);
+
   const parentLayout = parent?.layout as SimplifiedLayout | undefined;
   
   if (parentLayout?.mode !== "row" &&
       parentLayout?.mode !== "column") {
-      // 3. Layout Grouping 
+      // 4. Layout Grouping 
       processedNodes = groupNodesByLayout(processedNodes, parent);
-      // 4. Adjacency Clustering
+      // 5. Adjacency Clustering
       processedNodes = groupNodesByAdjacency(processedNodes, parent);
   }
 
-  // 5. Semantic Inference
+  // 6. Semantic Inference
   processedNodes = inferSemanticTags(processedNodes);
 
   return processedNodes;

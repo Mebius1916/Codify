@@ -1,24 +1,37 @@
-/**
- * 该算法暂时不启用
- */
 import type { SimplifiedNode } from "../../types/extractor-types.js";
 import type { BoundingBox, SimplifiedLayout } from "../../types/simplified-types.js";
 import { createVirtualFrame } from "./utils/virtual-node.js";
 import { areRectsTouching, getUnionRect, calculateRelativePosition } from "../../utils/geometry.js";
 import { UnionFind } from "./utils/union-find.js";
 import { isMergeCandidate } from "../../utils/candidate-check.js";
-import { getOptions } from "../../../options.js";
+
+type IconPart = {
+  index: number;
+  rect: BoundingBox;
+  node: SimplifiedNode;
+};
+
+const ICON_CLUSTER_RULES = {
+  maxClusterSize: 80,
+  maxPartGap: 4,
+  repeatedSequenceTolerance: 2,
+} as const;
 
 export function mergeSpatialIcons(nodes: SimplifiedNode[], parent?: SimplifiedNode): SimplifiedNode[] {
-  if (nodes.length < 2) return nodes;
-  const { spatialMerging } = getOptions();
+  for (const node of nodes) {
+    if (node.needsDownstreamProcessing && node.children?.length) {
+      node.children = mergeSpatialIcons(node.children, node);
+    }
+  }
 
-  const candidates: { index: number; rect: BoundingBox; node: SimplifiedNode }[] = [];
+  if (nodes.length < 2) return nodes;
+
+  const candidates: IconPart[] = [];
   const nonCandidates: { index: number; node: SimplifiedNode }[] = [];
 
   // 1. Filter candidates
   nodes.forEach((node, i) => {
-    if (isMergeCandidate(node, spatialMerging.threshold)) {
+    if (isMergeCandidate(node, ICON_CLUSTER_RULES.maxClusterSize)) {
       candidates.push({ index: i, rect: node.absRect!, node });
     } else {
       nonCandidates.push({ index: i, node });
@@ -29,12 +42,12 @@ export function mergeSpatialIcons(nodes: SimplifiedNode[], parent?: SimplifiedNo
 
   // 2. Clustering using Union-Find
   const uf = new UnionFind(candidates.length);
-  const dynamicDistance = computeAverageNeighborGap(candidates, spatialMerging.distance);
+  const mergeDistance = ICON_CLUSTER_RULES.maxPartGap;
 
   // 并查集将符合条件的碎片合并到一个集合中
   for (let i = 0; i < candidates.length; i++) {
     for (let j = i + 1; j < candidates.length; j++) {
-      if (areRectsTouching(candidates[i].rect, candidates[j].rect, dynamicDistance)) {
+      if (areRectsTouching(candidates[i].rect, candidates[j].rect, mergeDistance)) {
         uf.union(i, j);
       }
     }
@@ -54,14 +67,16 @@ export function mergeSpatialIcons(nodes: SimplifiedNode[], parent?: SimplifiedNo
   const finalNodes = [...nonCandidates.map(nc => ({ node: nc.node, sortIdx: nc.index }))];
   
   for (const [_, clusterParts] of clusters) {
-    if (clusterParts.length > 1) {
+    if (isValidIconCluster(clusterParts, ICON_CLUSTER_RULES.maxClusterSize)) {
       // 小图标合并后的虚拟节点
       const mergedNode = createMergedIconNode(clusterParts.map(c => c.node), parent);
       // 插入位置选择最早出现的碎片index
       const minIdx = Math.min(...clusterParts.map(c => c.index));
       finalNodes.push({ node: mergedNode, sortIdx: minIdx });
     } else {
-      finalNodes.push({ node: clusterParts[0].node, sortIdx: clusterParts[0].index });
+      for (const part of clusterParts) {
+        finalNodes.push({ node: part.node, sortIdx: part.index });
+      }
     }
   }
 
@@ -80,16 +95,22 @@ function createMergedIconNode(parts: SimplifiedNode[], parent?: SimplifiedNode):
   const isParentAutoLayout =
     typeof parentLayout === "object" && (parentLayout?.mode === "row" || parentLayout?.mode === "column");
   
-  // 如果所有碎片都是绝对定位，或者父级不是 Auto Layout，则合并后的节点也应该是绝对定位
-  const position = (allAbsolute || !isParentAutoLayout) ? "absolute" : "static";
+  // Flow icons still need a positioned containing block for absolute SVG parts.
+  const position = (allAbsolute || !isParentAutoLayout) ? "absolute" : "relative";
 
   const layout: SimplifiedLayout = {
-    mode: "row",
+    mode: "none",
     sizing: {},
     position: position,
   };
 
   const unionRect = getUnionRect(parts.map((p) => p.absRect).filter(Boolean) as BoundingBox[]);
+  if (unionRect.width > 0 && unionRect.height > 0) {
+    layout.dimensions = {
+      width: unionRect.width,
+      height: unionRect.height,
+    };
+  }
   
   // 如果是绝对定位，必须计算相对坐标
   if (position === "absolute" && parent?.absRect && unionRect) {
@@ -97,40 +118,75 @@ function createMergedIconNode(parts: SimplifiedNode[], parent?: SimplifiedNode):
       calculateRelativePosition(unionRect, parent.absRect);
   }
 
-  return createVirtualFrame({
+  const node = createVirtualFrame({
     idPrefix: "virtual-spatial-merge",
     name: "Merged Icon",
     type: "CONTAINER",
     layout: layout,
     semanticTag: "icon",
+    needsDownstreamProcessing: false,
     children: parts,
   });
+
+  if (node.absRect) {
+    for (const part of parts) {
+      if (!part.absRect) continue;
+      const partLayout =
+        typeof part.layout === "object" && part.layout
+          ? part.layout
+          : { mode: "none" as const, sizing: {} };
+      part.layout = {
+        ...partLayout,
+        position: "absolute",
+        parentMode: "none",
+        locationRelativeToParent: calculateRelativePosition(part.absRect, node.absRect),
+      };
+    }
+  }
+
+  return node;
 }
 
-function computeAverageNeighborGap(
-  candidates: { index: number; rect: BoundingBox; node: SimplifiedNode }[],
-  fallback: number
-): number {
-  if (candidates.length < 2) return fallback;
-  const gaps: number[] = [];
-  const rectGap = (a: BoundingBox, b: BoundingBox): number => {
-    const dx = Math.max(0, Math.max(a.x - (b.x + b.width), b.x - (a.x + a.width)));
-    const dy = Math.max(0, Math.max(a.y - (b.y + b.height), b.y - (a.y + a.height)));
-    return Math.max(dx, dy);
-  };
-  for (let i = 0; i < candidates.length; i++) {
-    const rectA = candidates[i].rect;
-    let minGap = Infinity;
-    for (let j = 0; j < candidates.length; j++) {
-      if (i === j) continue;
-      const rectB = candidates[j].rect;
-      const gap = rectGap(rectA, rectB);
-      if (gap < minGap) minGap = gap;
-    }
-    if (Number.isFinite(minGap)) gaps.push(minGap);
+function isValidIconCluster(parts: IconPart[], maxSize: number): boolean {
+  if (parts.length < 2) return false;
+
+  const rects = parts.map((part) => part.rect);
+  const unionRect = getUnionRect(rects);
+  if (unionRect.width === 0 || unionRect.height === 0) return false;
+  if (unionRect.width > maxSize || unionRect.height > maxSize) return false;
+
+  if (looksLikeRepeatedIconSequence(rects)) return false;
+
+  return true;
+}
+
+function looksLikeRepeatedIconSequence(rects: BoundingBox[]): boolean {
+  if (rects.length < 3) return false;
+  const unionRect = getUnionRect(rects);
+  let direction: "x" | "y" | null = null;
+  if (unionRect.width >= unionRect.height * 1.8) {
+    direction = "x";
+  } else if (unionRect.height >= unionRect.width * 1.8) {
+    direction = "y";
   }
-  if (gaps.length === 0) return fallback;
-  const sum = gaps.reduce((acc, val) => acc + val, 0);
-  const avg = sum / gaps.length;
-  return Number.isFinite(avg) ? avg : fallback;
+  if (!direction) return false;
+
+  const sorted = [...rects].sort((a, b) => a[direction] - b[direction]);
+  const gaps: number[] = [];
+  for (let i = 1; i < sorted.length; i++) {
+    const previous = sorted[i - 1];
+    const current = sorted[i];
+    const previousEnd = previous[direction] + (direction === "x" ? previous.width : previous.height);
+    gaps.push(Math.max(0, current[direction] - previousEnd));
+  }
+
+  const positiveGaps = gaps.filter((gap) => gap > 0);
+  if (positiveGaps.length !== gaps.length) return false;
+
+  const minGap = Math.min(...positiveGaps);
+  const maxGap = Math.max(...positiveGaps);
+  if (maxGap - minGap > ICON_CLUSTER_RULES.repeatedSequenceTolerance) return false;
+
+  const sizes = sorted.map((rect) => direction === "x" ? rect.width : rect.height);
+  return Math.max(...sizes) - Math.min(...sizes) <= ICON_CLUSTER_RULES.repeatedSequenceTolerance;
 }

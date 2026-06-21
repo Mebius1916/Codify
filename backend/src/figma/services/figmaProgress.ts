@@ -1,4 +1,4 @@
-import type { AgentProgressEvent } from '@codify/agent'
+import type { AgentProgressEvent } from '../../../../agents/dist/index'
 import type { ConvertProgressEvent, ConvertProgressStage } from '../types/figmaTypes.ts'
 
 type ProgressSink = (event: ConvertProgressEvent) => void

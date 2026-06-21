@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { runVisualRepair, type AgentProgressEvent } from "@codify/agent";
+import { runVisualRepair, type AgentProgressEvent } from "../../../../agents/dist/index";
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -109,7 +109,7 @@ export class FigmaAiEnhanceService {
         model: aiOptions.model?.trim(),
         nodeId: input.nodeRef.nodeId,
       });
-      
+
       const baselinePngBase64 = await stage.run("render_baseline", () =>
         this.figmaApiClient.fetchFigmaRenderPngBase64(
           input.nodeRef,

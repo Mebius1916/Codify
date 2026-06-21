@@ -5,7 +5,6 @@
 import type { SimplifiedNode } from "../../types/extractor-types.js";
 import { getRectArea, isRectContained, areRectsTouching, calculateRelativePosition } from "../../utils/geometry.js";
 import { canBeParent } from "../../utils/candidate-check.js";
-import { getOptions } from "../../../options.js";
 import type { SimplifiedLayout } from "../../types/simplified-types.js";
 
 type ParentCandidate = {
@@ -15,6 +14,9 @@ type ParentCandidate = {
   parentArea: number;
 };
 
+const PARTLY_CONTAIN_THRESHOLD = 0.85;
+const ABSOLUTE_OVERLAP_THRESHOLD = -2;
+
 export function reparentNodes(nodes: SimplifiedNode[], parent?: SimplifiedNode): SimplifiedNode[] {
   if (nodes.length === 0) return [];
   for (const node of nodes) {
@@ -22,9 +24,6 @@ export function reparentNodes(nodes: SimplifiedNode[], parent?: SimplifiedNode):
       node.children = reparentNodes(node.children, node);
     }
   }
-
-  const { reparenting } = getOptions();
-  const partlyContainThreshold = reparenting.partlyContainThreshold;
 
   const adoptedNodes = new Set<SimplifiedNode>();
 
@@ -38,7 +37,7 @@ export function reparentNodes(nodes: SimplifiedNode[], parent?: SimplifiedNode):
       const candidate = getParentCandidate(
         candidateParent,
         child,
-        partlyContainThreshold
+        PARTLY_CONTAIN_THRESHOLD
       );
       if (!candidate) continue;
       if (!bestCandidate || isBetterParentCandidate(candidate, bestCandidate)) {
@@ -54,7 +53,7 @@ export function reparentNodes(nodes: SimplifiedNode[], parent?: SimplifiedNode):
 
   // 用于存储处理后的新子节点列表 (未被吃掉的节点)
   const remainingNodes = nodes.filter(node => !adoptedNodes.has(node));
-  detectAbsoluteChildrenInList(remainingNodes, parent, reparenting.absoluteOverlapThreshold);
+  detectAbsoluteChildrenInList(remainingNodes, parent);
 
   return remainingNodes;
 }
@@ -98,7 +97,7 @@ function isBetterParentCandidate(candidate: ParentCandidate, currentBest: Parent
 }
 
 // AABB 碰撞检测，用于选出绝对定位的节点
-function detectAbsoluteChildrenInList(nodes: SimplifiedNode[], parent?: SimplifiedNode, threshold?: number) {
+function detectAbsoluteChildrenInList(nodes: SimplifiedNode[], parent?: SimplifiedNode) {
   if (nodes.length < 2) return;
 
   // Align with FigmaToCode: If parent is Auto Layout, respect native layout.
@@ -115,7 +114,7 @@ function detectAbsoluteChildrenInList(nodes: SimplifiedNode[], parent?: Simplifi
       if (!nodeB.absRect) continue;
 
       // 是否相交
-      if (!areRectsTouching(nodeA.absRect, nodeB.absRect, threshold)) continue;
+      if (!areRectsTouching(nodeA.absRect, nodeB.absRect, ABSOLUTE_OVERLAP_THRESHOLD)) continue;
 
       // 确定是相交关系
       if (getRectArea(nodeA.absRect) < getRectArea(nodeB.absRect)) {
