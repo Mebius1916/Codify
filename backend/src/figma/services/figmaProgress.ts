@@ -1,4 +1,4 @@
-import type { AgentProgressEvent } from '../../../../agents/dist/index'
+import type { AgentProgressEvent } from '../../../../agents/visualAgant/dist/index'
 import type { ConvertProgressEvent, ConvertProgressStage } from '../types/figmaTypes.ts'
 
 type ProgressSink = (event: ConvertProgressEvent) => void

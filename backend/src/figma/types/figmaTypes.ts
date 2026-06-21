@@ -1,4 +1,4 @@
-import type { AgentProgressEvent } from '../../../../agents/dist'
+import type { AgentProgressEvent } from '../../../../agents/visualAgant/dist'
 
 export interface CodegenResult {
   html: string

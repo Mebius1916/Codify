@@ -9,17 +9,23 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./source-reader": {
+      "types": "./dist/sourceReader/index.d.ts",
+      "default": "./dist/sourceReader/index.js"
     }
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.json",
-    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput"
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "source:pack": "tsc -p tsconfig.json && node dist/sourceReader/cli.js pack"
   },
   "dependencies": {
     "@langchain/core": "^1.1.48",
     "@langchain/google-genai": "^2.1.31",
     "@langchain/openai": "^1.4.7",
     "html-minifier-terser": "^7.2.0",
+    "repomix": "^1.15.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {

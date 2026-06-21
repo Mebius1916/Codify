@@ -18,6 +18,7 @@
     "steps/**/*.ts",
     "prompts/**/*.ts",
     "llm/**/*.ts",
+    "sourceReader/**/*.ts",
     "utils/**/*.ts",
     "interfaces/**/*.ts"
   ]

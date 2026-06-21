@@ -3,6 +3,17 @@ import type { RunVisualRepairInput, RunVisualRepairParams } from "./interfaces/r
 import { runVisualRepairLoop } from "./runtime/loop.js";
 
 export type { AgentProgressEvent } from "./interfaces/runtime.js";
+export {
+  answerSourceQuestion,
+  buildSourceKnowledgeBase,
+} from "./sourceReader/index.js";
+export type {
+  AnswerSourceQuestionInput,
+  AnswerSourceQuestionResult,
+  BuildSourceKnowledgeBaseInput,
+  SourceKnowledgeBase,
+  SourceKnowledgeBaseProgressEvent,
+} from "./sourceReader/index.js";
 
 export function runVisualRepair(params: RunVisualRepairInput) {
   const {

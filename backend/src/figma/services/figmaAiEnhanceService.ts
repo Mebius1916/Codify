@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { runVisualRepair, type AgentProgressEvent } from "../../../../agents/dist/index";
+import { runVisualRepair, type AgentProgressEvent } from "../../../../agents/visualAgant/dist/index";
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";

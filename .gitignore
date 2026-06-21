@@ -19,6 +19,7 @@ out/
 build/
 dist/
 *.tsbuildinfo
+.codify/
 
 # misc
 .DS_Store
