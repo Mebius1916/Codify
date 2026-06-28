@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { authDatabase } from '../auth/auth.ts'
+import { appDatabase } from '../database/appDatabase.ts'
 import type { WorkspaceSettingsDto } from './dto/workspaceSettingsDto.ts'
 
 interface WorkspaceSettingsRow {
@@ -9,7 +9,7 @@ interface WorkspaceSettingsRow {
 @Injectable()
 export class WorkspaceSettingsService {
   getSettings(userId: string): Partial<WorkspaceSettingsDto> | null {
-    const row = authDatabase
+    const row = appDatabase
       .prepare('SELECT settings_json FROM user_workspace_settings WHERE user_id = ?')
       .get(userId) as WorkspaceSettingsRow | undefined
 
@@ -24,7 +24,7 @@ export class WorkspaceSettingsService {
 
   saveSettings(userId: string, settings: WorkspaceSettingsDto): WorkspaceSettingsDto {
     const settingsJson = JSON.stringify(settings)
-    authDatabase
+    appDatabase
       .prepare(`
         INSERT INTO user_workspace_settings (user_id, settings_json, created_at, updated_at)
         VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)

@@ -20,6 +20,7 @@ build/
 dist/
 *.tsbuildinfo
 .codify/
+.evolving-agent/
 
 # misc
 .DS_Store

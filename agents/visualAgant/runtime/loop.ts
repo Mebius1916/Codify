@@ -41,6 +41,7 @@ export async function runVisualRepairLoop(
     );
     context.observeFigmaDescription = figmaDescription;
     context.observeGroups = groups;
+    context.input.onObserve?.({ figmaDescription, groups });
 
     const { planGroups } = await runWithAgentProgress(
       context,

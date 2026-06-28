@@ -1,7 +1,8 @@
-import type { AgentProgressEvent } from '../../../../agents/visualAgant/dist/index'
-import type { ConvertProgressEvent, ConvertProgressStage } from '../types/figmaTypes.ts'
+import type { AgentProgressEvent } from '@codify/agent'
+import type { ConvertProgressEvent, ConvertProgressStage } from './types.ts'
 
 type ProgressSink = (event: ConvertProgressEvent) => void
+
 export interface ConvertProgressReporter {
   report(stage: ConvertProgressStage): void
   reportAgent(event: AgentProgressEvent): void
@@ -47,3 +48,4 @@ function normalizeAgentStage(rawEvent: string): ConvertProgressStage {
   if (rawEvent === 'apply' || rawEvent === 'polish') return 'rewrite'
   return rawEvent as ConvertProgressStage
 }
+

@@ -24,6 +24,9 @@ interface EnvConfig {
   model: {
     apiKey: string
   }
+  sourceInsight: {
+    timeoutMs: number
+  }
 }
 
 export const env: EnvConfig = {
@@ -55,5 +58,8 @@ export const env: EnvConfig = {
   },
   model: {
     apiKey: process.env.MODEL_API_KEY ?? '',
+  },
+  sourceInsight: {
+    timeoutMs: Number(process.env.SOURCE_INSIGHT_TIMEOUT_MS ?? 2 * 60_000),
   },
 }

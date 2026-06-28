@@ -1,10 +1,10 @@
 import { Body, Controller, Post, Req, Res, UseGuards } from '@nestjs/common'
 import { AuthGuard } from '../../auth/authGuard.ts'
+import { CONVERT_PROGRESS_LABELS } from '../../conversion/convertProgress.ts'
+import type { ConvertProgressEvent } from '../../conversion/types.ts'
 import type { IncomingMessage } from 'node:http'
 import type { ConvertFigmaDto } from '../dto/convertFigmaDto.ts'
 import { FigmaService } from '../services/figmaService.ts'
-import { CONVERT_PROGRESS_LABELS } from '../services/figmaProgress.ts'
-import type { ConvertProgressEvent } from '../types/figmaTypes.ts'
 
 interface NdjsonResponse {
   setHeader(name: string, value: string): void

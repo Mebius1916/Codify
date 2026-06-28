@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
 import LRUCache from 'lru-cache'
 import { formatUserError, type FigmaApiStep } from '../../errors/userErrorEvents.ts'
-import type { FigmaNodeRef } from '../types/figmaTypes.ts'
+import type { FigmaNodeRef } from '../../conversion/types.ts'
 
 const FIGMA_RENDER_PNG_CACHE_TTL_MS = 30 * 60 * 1000
 const FIGMA_RENDER_PNG_CACHE_MAX = 100

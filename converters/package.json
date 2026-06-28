@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "css-to-tailwindcss": "^1.0.5",
+    "lowdb": "^7.0.1",
     "node-html-parser": "^7.1.0",
     "postcss": "^8.5.13"
   },

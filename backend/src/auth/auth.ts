@@ -1,12 +1,6 @@
 import { betterAuth } from 'better-auth'
-import { mkdirSync } from 'node:fs'
-import { dirname } from 'node:path'
-import { DatabaseSync } from 'node:sqlite'
 import { env } from '../config/env.ts'
-
-mkdirSync(dirname(env.auth.databasePath), { recursive: true })
-
-export const authDatabase = new DatabaseSync(env.auth.databasePath)
+import { appDatabase } from '../database/appDatabase.ts'
 const socialProviders = {
   ...(env.auth.github.clientId && env.auth.github.clientSecret
     ? {
@@ -31,7 +25,7 @@ export const auth = betterAuth({
   baseURL: env.auth.baseUrl,
   basePath: '/api/auth',
   secret: env.auth.secret || undefined,
-  database: authDatabase,
+  database: appDatabase,
   trustedOrigins: env.auth.trustedOrigins,
   socialProviders,
   account: {

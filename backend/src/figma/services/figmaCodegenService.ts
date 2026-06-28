@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
 import { convertFigmaToCode } from '@codify/design2code'
 import LRUCache from 'lru-cache'
-import type { CodegenResult, FigmaNodeRef } from '../types/figmaTypes.ts'
+import type { CodegenResult, FigmaNodeRef } from '../../conversion/types.ts'
 
 const FIGMA_ASSET_URL_CACHE_TTL_MS = 30 * 60 * 1000
 const FIGMA_ASSET_URL_CACHE_MAX = 500

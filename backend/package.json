@@ -7,10 +7,13 @@
     "dev": "pnpm run dev:watch",
     "dev:watch": "nodemon --watch src --ext ts --delay 500ms --exec \"node --experimental-specifier-resolution=node --loader ts-node/esm src/main.ts\"",
     "build": "tsc --noEmit",
+    "source:sync": "node --experimental-specifier-resolution=node --loader ts-node/esm scripts/syncSourceRepository.ts",
     "start": "node --experimental-specifier-resolution=node --loader ts-node/esm src/main.ts"
   },
   "dependencies": {
     "@codify/agent": "workspace:*",
+    "@codify/converters": "workspace:*",
+    "@codify/evolving-agent": "workspace:*",
     "@codify/design2code": "workspace:*",
     "@huggingface/transformers": "^4.2.0",
     "@logtail/node": "^0.5.8",

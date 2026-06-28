@@ -3,6 +3,16 @@ export interface AgentProgressEvent {
   details?: Record<string, unknown>;
 }
 
+export interface VisualRepairObserveResult {
+  figmaDescription: string;
+  groups: Array<{
+    priority: "high" | "medium" | "low";
+    dataIds: string[];
+    observation: string;
+    acceptance: string;
+  }>;
+}
+
 export interface RunVisualRepairParams {
   visualEvidencePngBase64: string;
   html: string;
@@ -12,6 +22,7 @@ export interface RunVisualRepairParams {
   temperature: number;
   timeout?: number;
   onProgress?: (event: AgentProgressEvent) => void;
+  onObserve?: (result: VisualRepairObserveResult) => void;
   abortSignal?: AbortSignal;
 }
 
@@ -24,5 +35,6 @@ export interface RunVisualRepairInput {
   temperature: number;
   timeout?: number;
   onProgress?: (event: AgentProgressEvent) => void;
+  onObserve?: (result: VisualRepairObserveResult) => void;
   abortSignal?: AbortSignal;
 }

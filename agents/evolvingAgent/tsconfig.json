@@ -15,10 +15,9 @@
   "include": [
     "index.ts",
     "runtime/**/*.ts",
-    "steps/**/*.ts",
-    "prompts/**/*.ts",
+    "tools/**/*.ts",
+    "interfaces/**/*.ts",
     "llm/**/*.ts",
-    "utils/**/*.ts",
-    "interfaces/**/*.ts"
+    "utils/**/*.ts"
   ]
 }

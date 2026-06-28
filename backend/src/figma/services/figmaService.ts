@@ -1,10 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
+import { AiEnhanceService } from '../../aiEnhance/aiEnhanceService.ts'
+import { createConvertProgressReporter, type ConvertProgressReporter } from '../../conversion/convertProgress.ts'
+import type { ConvertProgressEvent } from '../../conversion/types.ts'
 import type { ConvertFigmaDto } from '../dto/convertFigmaDto.ts'
-import { FigmaAiEnhanceService } from './figmaAiEnhanceService.ts'
 import { FigmaApiClient } from './figmaApiClient.ts'
 import { FigmaCodegenService } from './figmaCodegenService.ts'
-import { createConvertProgressReporter, type ConvertProgressReporter } from './figmaProgress.ts'
-import type { ConvertProgressEvent } from '../types/figmaTypes.ts'
 
 type ConvertProgressSink = (event: ConvertProgressEvent) => void
 
@@ -18,7 +18,7 @@ export class FigmaService {
     // 转换算法
     private readonly figmaCodegenService: FigmaCodegenService,
     // ai 增强
-    private readonly figmaAiEnhanceService: FigmaAiEnhanceService,
+    private readonly aiEnhanceService: AiEnhanceService,
   ) {}
 
   convert(input: ConvertFigmaDto, onProgress?: ConvertProgressSink, abortSignal?: AbortSignal) {
@@ -52,10 +52,14 @@ export class FigmaService {
       return { codegenResult }
     }
 
-    const aiEnhanced = await this.figmaAiEnhanceService.enhance({
-      dto: input,
+    const baselinePngBase64 = await this.figmaApiClient.fetchFigmaRenderPngBase64(
       nodeRef,
       token,
+    )
+    const aiEnhanced = await this.aiEnhanceService.enhance({
+      dto: input,
+      nodeRef,
+      baselinePngBase64,
       codegenResult,
       convertProgress,
       abortSignal,

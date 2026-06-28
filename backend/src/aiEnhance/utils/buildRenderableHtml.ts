@@ -1,5 +1,5 @@
 import { GENERATED_PAGE_RESET_CSS } from '@codify/design2code'
-import type { CodegenResult } from '../../types/figmaTypes.ts'
+import type { CodegenResult } from '../../conversion/types.ts'
 
 export function buildRenderableHtml(codegenResult: CodegenResult): string {
   const body = (codegenResult.body || codegenResult.html).trim()

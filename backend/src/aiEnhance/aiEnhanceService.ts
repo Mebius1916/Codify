@@ -1,27 +1,27 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { runVisualRepair, type AgentProgressEvent } from "../../../../agents/visualAgant/dist/index";
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { convertHtmlCssToTailwind } from "../../../../converters/index.ts";
-import { env } from "../../config/env.ts";
-import {
-  formatUserError,
-  type AiEnhanceStage,
-} from "../../errors/userErrorEvents.ts";
-import { formatError, formatErrorCause } from "../../logging/loggingUtils.ts";
-import { LoggingService } from "../../logging/loggingService.ts";
-import { RenderService } from "../../render/renderService.ts";
-import { VisualAttentionService } from "../../vision/visualAttentionService.ts";
-import type { ConvertFigmaDto } from "../dto/convertFigmaDto.ts";
-import { FigmaApiClient } from "./figmaApiClient.ts";
-import type { ConvertProgressReporter } from "./figmaProgress.ts";
+import { runVisualRepair, type AgentProgressEvent } from "@codify/agent";
+import { convertHtmlCssToTailwind } from "@codify/converters";
+import { env } from "../config/env.ts";
+import type { ConvertProgressReporter } from "../conversion/convertProgress.ts";
 import type {
   AiEnhanceResult,
   CodegenResult,
   ConvertProgressStage,
   FigmaNodeRef,
-} from "../types/figmaTypes.ts";
+} from "../conversion/types.ts";
+import {
+  formatUserError,
+  type AiEnhanceStage,
+} from "../errors/userErrorEvents.ts";
+import { formatError, formatErrorCause } from "../logging/loggingUtils.ts";
+import { LoggingService } from "../logging/loggingService.ts";
+import { RenderService } from "../render/renderService.ts";
+import { SourceInsightService } from "../sourceInsight/sourceInsightService.ts";
+import { VisualAttentionService } from "../vision/visualAttentionService.ts";
+import type { ConvertFigmaDto } from "../figma/dto/convertFigmaDto.ts";
 import { buildRenderableHtml } from "./utils/buildRenderableHtml.ts";
 
 const FIGMA_AI_LLM_TIMEOUT_MS = 1 * 60_000;
@@ -45,18 +45,18 @@ function readPngSize(base64: string): { width: number; height: number } {
 }
 
 @Injectable()
-export class FigmaAiEnhanceService {
+export class AiEnhanceService {
   constructor(
-    private readonly figmaApiClient: FigmaApiClient,
     private readonly renderService: RenderService,
     private readonly visualAttentionService: VisualAttentionService,
+    private readonly sourceInsightService: SourceInsightService,
     private readonly loggingService: LoggingService,
   ) {}
 
   async enhance(input: {
     dto: ConvertFigmaDto;
     nodeRef: FigmaNodeRef;
-    token: string;
+    baselinePngBase64: string;
     codegenResult: CodegenResult;
     convertProgress: ConvertProgressReporter;
     abortSignal?: AbortSignal;
@@ -68,14 +68,13 @@ export class FigmaAiEnhanceService {
       runId,
       input.convertProgress,
     );
-    // agent 日志
     const handleAgentProgress = (event: AgentProgressEvent) => {
       events.push(event);
       input.convertProgress.reportAgent(event);
       const status = String(event.details?.status ?? "");
       const payload = {
         runId,
-        module: "figma",
+        module: "aiEnhance",
         source: "agent",
         agentEvent: event.event,
         details: event.details,
@@ -104,18 +103,13 @@ export class FigmaAiEnhanceService {
 
       this.loggingService.info("AI enhance started", {
         runId,
-        module: "figma",
+        module: "aiEnhance",
         source: "backend",
         model: aiOptions.model?.trim(),
         nodeId: input.nodeRef.nodeId,
       });
 
-      const baselinePngBase64 = await stage.run("render_baseline", () =>
-        this.figmaApiClient.fetchFigmaRenderPngBase64(
-          input.nodeRef,
-          input.token,
-        ),
-      );
+      const baselinePngBase64 = input.baselinePngBase64;
       const viewport = readPngSize(baselinePngBase64);
       const renderHtml = buildRenderableHtml(input.codegenResult);
       const { buffer } = await stage.run("render_current", () =>
@@ -143,45 +137,12 @@ export class FigmaAiEnhanceService {
       });
       this.loggingService.info("AI enhance debug images saved", {
         runId,
-        module: "figma",
+        module: "aiEnhance",
         source: "backend",
         debugImageDir,
       });
 
-      const currentHtml = await (async () => {
-        try {
-          const htmlFragment = (
-            input.codegenResult.body || input.codegenResult.html
-          ).trim();
-          const tailwindFragment = (
-            await convertHtmlCssToTailwind(
-              htmlFragment,
-              input.codegenResult.css,
-            )
-          ).trim();
-          this.loggingService.info("AI enhance tailwind conversion succeeded", {
-            runId,
-            module: "figma",
-            source: "backend",
-            currentHtmlLength: tailwindFragment.length,
-            tailwindFragment: this.toLoggableTailwindFragment(tailwindFragment),
-          });
-          return tailwindFragment;
-        } catch (error) {
-          this.loggingService.error(
-            "AI enhance tailwind conversion failed, fallback to raw html+css",
-            {
-              runId,
-              module: "figma",
-              source: "backend",
-              error: formatError(error),
-              errorCause: formatErrorCause(error),
-            },
-          );
-          return (input.codegenResult.body || input.codegenResult.html).trim();
-        }
-      })();
-
+      const currentHtml = await this.prepareCurrentHtml(input, runId);
       const result = await stage.run("agent_visual_repair", () =>
         runVisualRepair({
           visualEvidencePngBase64: visualAttention.visualEvidencePngBase64,
@@ -192,13 +153,29 @@ export class FigmaAiEnhanceService {
           temperature: aiOptions.temperature ?? 0,
           timeout: FIGMA_AI_LLM_TIMEOUT_MS,
           onProgress: handleAgentProgress,
+          onObserve: (observe) => {
+            const sourceInsightRunId = this.sourceInsightService.startFromObserve({
+              aiEnhanceRunId: runId,
+              nodeRef: input.nodeRef,
+              observe,
+              model: aiOptions.model?.trim() || "gemini-2.5-flash",
+              apiKey,
+              baseUrl: aiOptions.baseUrl.trim(),
+            });
+            this.loggingService.info("AI enhance source insight queued", {
+              runId,
+              module: "aiEnhance",
+              source: "backend",
+              sourceInsightRunId,
+            });
+          },
           abortSignal: input.abortSignal,
         }),
       );
 
       this.loggingService.info("AI enhance completed", {
         runId,
-        module: "figma",
+        module: "aiEnhance",
         source: "backend",
         durationMs: Date.now() - startedAt,
       });
@@ -209,7 +186,7 @@ export class FigmaAiEnhanceService {
     } catch (error) {
       this.loggingService.error("AI enhance failed", {
         runId,
-        module: "figma",
+        module: "aiEnhance",
         source: "backend",
         durationMs: Date.now() - startedAt,
         error: formatError(error),
@@ -225,6 +202,45 @@ export class FigmaAiEnhanceService {
           events,
         },
       };
+    }
+  }
+
+  private async prepareCurrentHtml(
+    input: {
+      codegenResult: CodegenResult;
+    },
+    runId: string,
+  ): Promise<string> {
+    try {
+      const htmlFragment = (
+        input.codegenResult.body || input.codegenResult.html
+      ).trim();
+      const tailwindFragment = (
+        await convertHtmlCssToTailwind(
+          htmlFragment,
+          input.codegenResult.css,
+        )
+      ).trim();
+      this.loggingService.info("AI enhance tailwind conversion succeeded", {
+        runId,
+        module: "aiEnhance",
+        source: "backend",
+        currentHtmlLength: tailwindFragment.length,
+        tailwindFragment: this.toLoggableTailwindFragment(tailwindFragment),
+      });
+      return tailwindFragment;
+    } catch (error) {
+      this.loggingService.error(
+        "AI enhance tailwind conversion failed, fallback to raw html+css",
+        {
+          runId,
+          module: "aiEnhance",
+          source: "backend",
+          error: formatError(error),
+          errorCause: formatErrorCause(error),
+        },
+      );
+      return (input.codegenResult.body || input.codegenResult.html).trim();
     }
   }
 
@@ -246,7 +262,7 @@ export class FigmaAiEnhanceService {
           const result = await task();
           this.loggingService.info("AI enhance stage completed", {
             runId,
-            module: "figma",
+            module: "aiEnhance",
             source: "backend",
             stage: logStage,
             durationMs: Date.now() - startedAt,
@@ -255,7 +271,7 @@ export class FigmaAiEnhanceService {
         } catch (error) {
           this.loggingService.error("AI enhance stage failed", {
             runId,
-            module: "figma",
+            module: "aiEnhance",
             source: "backend",
             stage: logStage,
             durationMs: Date.now() - startedAt,
@@ -291,13 +307,11 @@ export class FigmaAiEnhanceService {
         resolve(outputDir, "current.png"),
         Buffer.from(images.current, "base64"),
       ),
-    ];
-    writes.push(
       writeFile(
         resolve(outputDir, "visual-evidence.png"),
         Buffer.from(images.evidence, "base64"),
       ),
-    );
+    ];
     await Promise.all(writes);
     return outputDir;
   }

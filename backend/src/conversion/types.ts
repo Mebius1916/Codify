@@ -1,4 +1,4 @@
-import type { AgentProgressEvent } from '../../../../agents/visualAgant/dist'
+import type { AgentProgressEvent } from '@codify/agent'
 
 export interface CodegenResult {
   html: string
@@ -38,3 +38,4 @@ export interface AiEnhanceResult {
     events: AgentProgressEvent[]
   }
 }
+

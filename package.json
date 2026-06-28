@@ -6,6 +6,7 @@
     "dev": "pnpm --filter @codify/agent build && concurrently -n agent,backend,frontend \"pnpm --filter @codify/agent dev\" \"pnpm --filter @codify/backend dev:watch\" \"pnpm --filter @codify/frontend dev\"",
     "build": "pnpm --filter @codify/agent build && pnpm --filter @codify/backend build && pnpm --filter @codify/frontend build",
     "start": "concurrently -n backend,frontend \"pnpm --filter @codify/backend start\" \"pnpm --filter @codify/frontend start\"",
+    "source:sync": "pnpm --filter @codify/backend source:sync",
     "lint": "pnpm --filter @codify/frontend lint",
     "dev:all": "pnpm dev"
   },

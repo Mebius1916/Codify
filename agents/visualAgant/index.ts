@@ -2,18 +2,10 @@ import { createLLM } from "./llm/createLLM.js";
 import type { RunVisualRepairInput, RunVisualRepairParams } from "./interfaces/runtime.js";
 import { runVisualRepairLoop } from "./runtime/loop.js";
 
-export type { AgentProgressEvent } from "./interfaces/runtime.js";
-export {
-  answerSourceQuestion,
-  buildSourceKnowledgeBase,
-} from "./sourceReader/index.js";
 export type {
-  AnswerSourceQuestionInput,
-  AnswerSourceQuestionResult,
-  BuildSourceKnowledgeBaseInput,
-  SourceKnowledgeBase,
-  SourceKnowledgeBaseProgressEvent,
-} from "./sourceReader/index.js";
+  AgentProgressEvent,
+  VisualRepairObserveResult,
+} from "./interfaces/runtime.js";
 
 export function runVisualRepair(params: RunVisualRepairInput) {
   const {
@@ -25,6 +17,7 @@ export function runVisualRepair(params: RunVisualRepairInput) {
     temperature,
     timeout,
     onProgress,
+    onObserve,
     abortSignal,
   } = params;
 
@@ -37,6 +30,7 @@ export function runVisualRepair(params: RunVisualRepairInput) {
     temperature,
     timeout,
     onProgress,
+    onObserve,
     abortSignal,
   } satisfies RunVisualRepairParams;
 
