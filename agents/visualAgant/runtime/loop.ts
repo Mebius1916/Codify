@@ -7,7 +7,7 @@ import { observeVisualDiff } from "../steps/observeVisualDiff.js";
 import { planVisualRepair } from "../steps/planVisualRepair.js";
 import { runWithAgentProgress } from "./utils/progress.js";
 import { runApplyStep } from "./utils/applyStep.js";
-import { runPolishStep } from "./utils/polishStep.js";
+import { runOptimizeStep } from "./utils/optimizeStep.js";
 
 export interface VisualRepairContext {
   input: RunVisualRepairParams;
@@ -67,14 +67,23 @@ export async function runVisualRepairLoop(
       context,
       "apply",
       () => runApplyStep(llm, context, repairPlanGroupsJson),
+      ({ result, patches }) => ({
+        output: {
+          patches: patches.map((patch) => ({
+            id: patch.id,
+            htmlLength: patch.html.length,
+          })),
+          mergedHtmlLength: result.html.length,
+        },
+      }),
     );
     context.currentHtml = applied.html;
     context.currentCss = "";
 
     return runWithAgentProgress(
       context,
-      "polish",
-      () => runPolishStep(llm, context),
+      "optimize",
+      () => runOptimizeStep(llm, context),
     );
   };
 

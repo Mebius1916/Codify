@@ -33,7 +33,7 @@ export const observeVisualSystemPrompt = [
   "- 不要输出解释文字、Markdown 或代码。",
   "",
   "字段定义：",
-  "- figmaDescription：描述 baseline 的页面/组件意图、主视觉焦点和层级关系，用于后续 plan/apply/polish。",
+  "- figmaDescription：描述 baseline 的页面/组件意图、主视觉焦点和层级关系，用于后续 plan/apply/optimize。",
   "- groups：后续 plan/apply 的目标锚点，必须围绕组件/模块级 baseline 视觉目标组织，而不是 patch 级碎片。",
   "",
   "证据使用规则：",

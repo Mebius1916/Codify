@@ -5,27 +5,27 @@ import {
   htmlCssResultSchema,
   type HtmlCssResult,
 } from "../interfaces/htmlCssResult.js";
-import { polishHtmlSystemPrompt } from "../prompts/polish.js";
+import { optimizeHtmlSystemPrompt } from "../prompts/optimize.js";
 import type { VisualRepairContext } from "../runtime/loop.js";
 import { sanitizers } from "../sanitizers/index.js";
 
-export interface PolishHtmlInput {
+export interface OptimizeHtmlInput {
   context: VisualRepairContext;
   currentHtml: string;
   currentCss: string;
 }
 
-export interface PolishHtmlOutput {
+export interface OptimizeHtmlOutput {
   result: HtmlCssResult;
 }
 
-function buildPolishInstruction(
+function buildOptimizeInstruction(
   figmaDescription: string,
   currentHtml: string,
   currentCss: string,
 ): string {
   return [
-    polishHtmlSystemPrompt,
+    optimizeHtmlSystemPrompt,
     "",
     "===== 本步任务 =====",
     "请在不改变视觉结果与语义内容的前提下优化代码结构，输出最终 html + css。",
@@ -41,17 +41,17 @@ function buildPolishInstruction(
   ].join("\n");
 }
 
-export async function polishHtml(
+export async function optimizeHtml(
   llm: BaseChatModel,
-  input: PolishHtmlInput
-): Promise<PolishHtmlOutput> {
+  input: OptimizeHtmlInput
+): Promise<OptimizeHtmlOutput> {
   const structuredLlm = llm.withStructuredOutput(htmlCssResultSchema, {
     name: "HtmlCssResult",
     strict: true,
   });
 
   const instruction = new HumanMessage(
-    buildPolishInstruction(
+    buildOptimizeInstruction(
       input.context.observeFigmaDescription ?? "",
       input.currentHtml,
       input.currentCss,

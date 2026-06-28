@@ -45,7 +45,6 @@ export function createConvertProgressReporter(onProgress?: ProgressSink): Conver
 }
 
 function normalizeAgentStage(rawEvent: string): ConvertProgressStage {
-  if (rawEvent === 'apply' || rawEvent === 'polish') return 'rewrite'
+  if (rawEvent === 'apply' || rawEvent === 'optimize') return 'rewrite'
   return rawEvent as ConvertProgressStage
 }
-

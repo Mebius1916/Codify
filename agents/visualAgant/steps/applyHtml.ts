@@ -1,14 +1,16 @@
 import { HumanMessage } from "@langchain/core/messages";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 
-import {
-  htmlFragmentResultSchema,
-  type HtmlFragmentResult,
-} from "../interfaces/htmlFragmentResult.js";
+import type { HtmlFragmentResult } from "../interfaces/htmlFragmentResult.js";
 import type { RepairPlanGroup } from "../interfaces/repairPatch.js";
+import {
+  scopedHtmlPatchResultSchema,
+  type ScopedHtmlPatch,
+} from "../interfaces/scopedHtmlPatch.js";
 import { applyHtmlSystemPrompt } from "../prompts/apply.js";
 import type { VisualRepairContext } from "../runtime/loop.js";
 import { compactHtmlForPrompt } from "../runtime/utils/htmlPrompt.js";
+import { applyScopedHtmlPatches } from "./utils/scopedPatch.js";
 
 export interface ApplyHtmlInput {
   context: VisualRepairContext;
@@ -19,6 +21,7 @@ export interface ApplyHtmlInput {
 
 export interface ApplyHtmlOutput {
   result: HtmlFragmentResult;
+  patches: ScopedHtmlPatch[];
 }
 
 function buildApplyInstruction(
@@ -30,7 +33,7 @@ function buildApplyInstruction(
     applyHtmlSystemPrompt,
     "",
     "===== 本步任务 =====",
-    "请根据结构化修复计划，先完成补丁执行，只输出 Tailwind HTML 片段。",
+    "请根据结构化修复计划，输出局部 HTML patches。程序会根据 id 完成替换。",
     "",
     "## Figma 渲染图描述",
     figmaDescription || "(empty)",
@@ -47,8 +50,8 @@ export async function applyHtml(
   llm: BaseChatModel,
   input: ApplyHtmlInput
 ): Promise<ApplyHtmlOutput> {
-  const structuredLlm = llm.withStructuredOutput(htmlFragmentResultSchema, {
-    name: "HtmlFragmentResult",
+  const structuredLlm = llm.withStructuredOutput(scopedHtmlPatchResultSchema, {
+    name: "ScopedHtmlPatchResult",
     strict: true,
   });
 
@@ -63,11 +66,11 @@ export async function applyHtml(
   const rawResult = await structuredLlm.invoke([instruction], {
     signal: input.context.input.abortSignal,
   });
-  const parsed = htmlFragmentResultSchema.parse(rawResult);
-  const nextHtml = parsed.html.trim();
+  const parsed = scopedHtmlPatchResultSchema.parse(rawResult);
+  const nextHtml = applyScopedHtmlPatches(input.currentHtml, parsed.patches).trim();
   if (!nextHtml || !nextHtml.startsWith("<")) {
-    throw new Error("apply 输出的 html 不是有效 HTML 片段");
+    throw new Error("apply patch 后的 html 不是有效 HTML 片段");
   }
 
-  return { result: { html: nextHtml } };
+  return { result: { html: nextHtml }, patches: parsed.patches };
 }

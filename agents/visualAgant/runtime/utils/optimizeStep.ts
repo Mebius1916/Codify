@@ -1,12 +1,12 @@
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
-import { polishHtml } from "../../steps/polishHtml.js";
+import { optimizeHtml } from "../../steps/optimizeHtml.js";
 import type { VisualRepairContext } from "../loop.js";
 
-export function runPolishStep(
+export function runOptimizeStep(
   llm: BaseChatModel,
   context: VisualRepairContext,
 ) {
-  return polishHtml(llm, {
+  return optimizeHtml(llm, {
     context,
     currentHtml: context.currentHtml,
     currentCss: context.currentCss,
