@@ -4,15 +4,23 @@ import { hasVisibleStyles } from "../../utils/node-check.js";
 import type { BoundingBox } from "../../types/simplified-types.js";
 import type { TraversalContext } from "../../types/extractor-types.js";
 import { resolveNodeFills } from "./utils/check-fills.js";
+import type { OcclusionInstrumentationStrategy } from "../../instrumentation/strategies/occlusion/index.js";
 
+// 移除被上层不透明兄弟节点完全遮挡的节点，并可选记录 AI 证据。
 export function removeOccludedNodes(
   nodes: SimplifiedNode[],
-  globalVars?: TraversalContext["globalVars"]
+  globalVars?: TraversalContext["globalVars"],
+  instrumentation?: OcclusionInstrumentationStrategy,
 ): SimplifiedNode[] {
-  if (nodes.length === 0) return [];
+  if (nodes.length === 0) {
+    instrumentation?.startStage(0);
+    instrumentation?.finish(0);
+    return [];
+  }
 
   const visibleNodes: SimplifiedNode[] = []; // 有效节点
   const occluders: BoundingBox[] = []; // 遮罩层
+  instrumentation?.startStage(nodes.length);
 
   for (let i = nodes.length - 1; i >= 0; i--) {
     const node = nodes[i];
@@ -20,6 +28,7 @@ export function removeOccludedNodes(
 
     // Skip nodes with invalid geometry
     if (!rect || rect.width <= 0 || rect.height <= 0) {
+      instrumentation?.recordInvalidGeometry();
       continue;
     }
 
@@ -42,20 +51,36 @@ export function removeOccludedNodes(
 
     // 判断当前节点露出部分是否有可见内容
     const isOccluded = remainingRegions.length === 0 || !hasVisibleContentInRegions(node, remainingRegions);
+    instrumentation?.recordNodeEvaluation({
+      node,
+      rect,
+      remainingRegions,
+      occluderRects: occluders,
+      isOccluded,
+    });
 
     if (!isOccluded) {
       visibleNodes.unshift(node);
 
       // 加入遮罩层
-      if (isOpaque(node, globalVars)) {
+      const opaque = isOpaque(node, globalVars);
+      instrumentation?.recordOccluderEvaluation({
+        node,
+        rect,
+        globalVars,
+        isOpaque: opaque,
+      });
+      if (opaque) {
         occluders.push(rect);
       }
     }
   }
 
+  instrumentation?.finish(visibleNodes.length);
   return visibleNodes;
 }
 
+// 判断节点在剩余区域中是否仍有可见内容。
 function hasVisibleContentInRegions(node: SimplifiedNode, regions: BoundingBox[]): boolean {
   // 1. Leaf Nodes (Text, Icon, Image) are inherently visible if they are not fully occluded.
   if (node.type === "TEXT" || node.type === "SVG" || node.type === "IMAGE") {
@@ -91,7 +116,7 @@ function hasVisibleContentInRegions(node: SimplifiedNode, regions: BoundingBox[]
   return false;
 }
 
-// Check if node is opaque (blocks vision)
+// 判断节点是否可作为完全不透明的矩形遮挡层。
 function isOpaque(node: SimplifiedNode, globalVars?: TraversalContext["globalVars"]): boolean {
   // 1. Type Check: Non-rectangular shapes are never opaque occluders
   if (node.type === "TEXT" || node.type === "SVG") return false;
@@ -115,6 +140,7 @@ function isOpaque(node: SimplifiedNode, globalVars?: TraversalContext["globalVar
   return true;
 }
 
+// 判断填充是否为单一完全不透明 solid。
 function isSingleOpaqueSolidFill(fills: unknown): boolean {
   if (typeof fills === "string") return isOpaqueCssColor(fills);
   if (!Array.isArray(fills) || fills.length !== 1) return false;
@@ -131,6 +157,7 @@ function isSingleOpaqueSolidFill(fills: unknown): boolean {
   return typeof paint.color === "string" && isOpaqueCssColor(paint.color);
 }
 
+// 判断 CSS 颜色字符串是否可视为完全不透明。
 function isOpaqueCssColor(value: string): boolean {
   const color = value.trim().toLowerCase();
   if (!color || color === "transparent") return false;
@@ -147,6 +174,7 @@ function isOpaqueCssColor(value: string): boolean {
   return Number.isFinite(alpha) && alpha >= 1;
 }
 
+// 提取 CSS var 的 fallback 颜色。
 function getCssVarFallback(value: string): string | null {
   const match = value.match(/^var\((.+)\)$/);
   if (!match) return null;

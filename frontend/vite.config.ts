@@ -3,8 +3,10 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '')
+  const rootEnvDir = path.resolve(__dirname, '..')
+  const env = loadEnv(mode, rootEnvDir, '')
   return {
+  envDir: rootEnvDir,
   plugins: [
     react({
       babel: {

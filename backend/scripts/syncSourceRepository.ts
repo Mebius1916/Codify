@@ -1,5 +1,3 @@
-import 'dotenv/config'
-
 import { mkdirSync } from 'node:fs'
 import { readFile, readdir, stat } from 'node:fs/promises'
 import { dirname, extname, relative, resolve } from 'node:path'
