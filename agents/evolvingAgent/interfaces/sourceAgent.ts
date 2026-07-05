@@ -1,4 +1,24 @@
-import type { SourceRepositoryState } from "@codify/converters";
+import type {
+  InstrumentationSearchGroup,
+  InstrumentationStrategyPointDirectory,
+  SourceRepositoryState,
+} from "@codify/converters";
+
+export type InstrumentationReadOptions = {
+  query?: string;
+  limit?: number;
+  offset?: number;
+};
+
+// agent 按需查询转换算法决策的回调契约，具体数据由调用方（后端读 DB）提供，agent 不持有全量 packets。
+export interface InstrumentationProvider {
+  listStrategyPoints(): InstrumentationStrategyPointDirectory[];
+  readStrategyPoint(
+    strategyId: string,
+    strategyPoint: string,
+    options?: InstrumentationReadOptions,
+  ): InstrumentationSearchGroup;
+}
 
 export interface SourceAgentProgressEvent {
   event: string;
@@ -37,6 +57,7 @@ export interface RunSourceAgentInput {
   temperature?: number;
   timeout?: number;
   budget?: SourceAgentBudget;
+  instrumentationProvider?: InstrumentationProvider;
   onProgress?: (event: SourceAgentProgressEvent) => void;
   abortSignal?: AbortSignal;
 }

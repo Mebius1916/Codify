@@ -2,9 +2,28 @@ import type { CodeGraph as UpstreamCodeGraphInstance } from "@colbymchenry/codeg
 import { tool, type StructuredToolInterface } from "@langchain/core/tools";
 import type { z } from "zod";
 
-import type { SourceAgentBudget, SourceAgentEvidence, SourceAgentToolTrace } from "../interfaces/index.js";
+import type {
+  InstrumentationProvider,
+  SourceAgentBudget,
+  SourceAgentEvidence,
+  SourceAgentToolTrace,
+} from "../interfaces/index.js";
 
 const OUTPUT_PREVIEW_CHARS = 2_000;
+
+// 约束层门闩：记录 AI 对异常归属的判定，未判定前不允许进入源码搜索。
+export interface AnomalyGate {
+  strategy: string | null;
+}
+
+// 门闩校验：未完成 classifyAnomaly（strategy 为空）前，返回阻断提示，否则返回 null。
+export function anomalyGateError(gate: AnomalyGate): { error: string } | null {
+  if (gate.strategy) return null;
+  return {
+    error:
+      "Blocked: call classifyAnomaly first to attribute the anomaly to one existing strategy or 'other' before searching source.",
+  };
+}
 
 export interface SourceToolContext {
   repoRoot: string;
@@ -13,6 +32,8 @@ export interface SourceToolContext {
   budget?: SourceAgentBudget;
   evidence: SourceAgentEvidence[];
   toolTrace: SourceAgentToolTrace[];
+  instrumentationProvider?: InstrumentationProvider;
+  anomalyGate: AnomalyGate;
   onToolCall?: (event: SourceAgentToolTrace) => void;
 }
 

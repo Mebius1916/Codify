@@ -1,4 +1,6 @@
 export type {
+  InstrumentationProvider,
+  InstrumentationReadOptions,
   RunSourceAgentInput,
   RunSourceAgentResult,
   SourceAgentBudget,

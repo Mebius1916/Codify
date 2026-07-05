@@ -7,6 +7,12 @@ import { LoggingService } from '../logging/loggingService.ts'
 import { SourceRepositoryService } from '../sourceRepository/sourceRepositoryService.ts'
 import { runEvolvingAgent } from '@codify/evolving-agent'
 import type { VisualRepairObserveResult } from '@codify/agent'
+import {
+  hasInstrumentationPackets,
+  listNodeStrategyPoints,
+  readNodeStrategyPoint,
+} from './instrumentationStore.ts'
+import type { FigmaNodeRef } from '../conversion/types.ts'
 
 export interface SourceInsightStartInput {
   aiEnhanceRunId: string
@@ -74,7 +80,7 @@ export class SourceInsightService {
       nodeId: input.nodeRef.nodeId,
     })
 
-    void this.runSourceInsight(runId, prompt, {
+    void this.runSourceInsight(runId, prompt, input.nodeRef, {
       model: input.model,
       apiKey: input.apiKey,
       baseUrl: input.baseUrl,
@@ -91,6 +97,7 @@ export class SourceInsightService {
   private async runSourceInsight(
     runId: string,
     prompt: string,
+    nodeRef: FigmaNodeRef,
     modelOptions: { model: string; apiKey: string; baseUrl: string },
   ): Promise<void> {
     const syncedSource = this.sourceRepositoryService.syncLocalSource()
@@ -111,6 +118,19 @@ export class SourceInsightService {
       return
     }
 
+    // 判定该节点是否有转换算法决策记录，有则构造按需查询的 provider 注入 agent
+    const hasInstrumentation = hasInstrumentationPackets(nodeRef)
+    const instrumentationProvider = hasInstrumentation
+      ? {
+          listStrategyPoints: () => listNodeStrategyPoints(nodeRef),
+          readStrategyPoint: (
+            strategyId: string,
+            strategyPoint: string,
+            options?: { query?: string; limit?: number; offset?: number },
+          ) => readNodeStrategyPoint(nodeRef, strategyId, strategyPoint, options),
+        }
+      : undefined
+
     this.loggingService.info('Source insight started', {
       runId,
       module: 'sourceInsight',
@@ -118,6 +138,7 @@ export class SourceInsightService {
       repoRoot: syncedSource.repoRoot,
       includeDirs: SOURCE_INSIGHT_INCLUDE_DIRS,
       syncedSource,
+      hasInstrumentation,
       budget: {
         maxToolCalls: SOURCE_INSIGHT_MAX_TOOL_CALLS,
         maxReadLinesPerCall: 120,
@@ -143,6 +164,7 @@ export class SourceInsightService {
           maxReadLinesPerCall: 120,
           maxGraphResults: 30,
         },
+        instrumentationProvider,
         onProgress: (event) => {
           agentEvents.push(event)
         },
@@ -228,6 +250,8 @@ function buildSourceInsightPrompt(input: SourceInsightStartInput): string {
     '- 可分析源码范围已经固定为 design2code，只需要决定搜索什么，不需要决定去哪里搜。',
     '- 优先围绕 observe 中的视觉问题类型搜索 HTML 生成、CSS 生成、布局、文本、图片、样式提取相关实现。',
     '- 每个主要结论必须至少有一个 readFileRange 证据支撑，并引用文件路径与行号。',
+    '- 搜索前必须先调用 classifyAnomaly，把该异常归入“现有算法策略之一”或 “other”（不属于任何策略时），未分类前 exploreSource / readFileRange / searchInstrumentation 都不可用。',
+    '- 若提供了 searchInstrumentation 工具，请优先用它查询转换算法在该节点上的决策记录（先 mode="list" 看有哪些策略决策点，再 mode="read" 逐条阅读），作为异常定位的首要线索，然后再用 readFileRange 到源码验证。',
     '- 只通过 exploreSource 看到但没有 readFileRange 验证过的文件，只能放入“待验证候选方向”，不能写成确定结论。',
     '- 最终回答请分为“已验证结论”和“待验证候选方向”。',
     '',

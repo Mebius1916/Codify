@@ -56,6 +56,8 @@ export async function runEvolvingAgent(
     budget: input.budget,
     evidence,
     toolTrace,
+    instrumentationProvider: input.instrumentationProvider,
+    anomalyGate: { strategy: null },
     onToolCall: (trace) => {
       input.onProgress?.({
         event: "evolvingAgent.tool",
@@ -71,7 +73,10 @@ export async function runEvolvingAgent(
   const agent = createAgent({
     model: llm,
     tools,
-    systemPrompt: createSourceExplorerPrompt(repoProfile),
+    systemPrompt: createSourceExplorerPrompt(
+      repoProfile,
+      Boolean(input.instrumentationProvider),
+    ),
   });
 
   input.onProgress?.({

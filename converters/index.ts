@@ -8,3 +8,17 @@ export type {
   OverwriteSourceFilesInput,
   SourceRepositoryState,
 } from "./source-repository/index.js";
+export {
+  listInstrumentationStrategyPoints,
+  readInstrumentationStrategyPoint,
+} from "./instrumentation/search.js";
+export { INSTRUMENTATION_STRATEGY_IDS } from "./instrumentation/types.js";
+export type {
+  InstrumentationFieldValue,
+  InstrumentationPacket,
+  InstrumentationRecord,
+  InstrumentationSearchGroup,
+  InstrumentationSearchResult,
+  InstrumentationStrategyId,
+  InstrumentationStrategyPointDirectory,
+} from "./instrumentation/types.js";

@@ -4,6 +4,7 @@ import { UnionFind } from "./utils/union-find.js";
 import { isClusterCandidate } from "../../utils/candidate-check.js";
 import { buildContainerByGap } from "./utils/layout-inference.js";
 import { inferClusterDirection } from "./utils/infer-direction.js";
+import type { AdjacencyClusteringInstrumentationStrategy } from "../../instrumentation/strategies/adjacency-clustering.js";
 
 type ClusterCandidate = {
   index: number;
@@ -14,10 +15,20 @@ const MAX_MAIN_AXIS_GAP_RATIO = 0.5;
 const MIN_CROSS_AXIS_OVERLAP_RATIO = 0.5;
 const MAX_MERGED_EMPTY_RATIO = 0.45;
 
-export function groupNodesByAdjacency(nodes: SimplifiedNode[], parent?: SimplifiedNode): SimplifiedNode[] {
+// 将互相邻接的节点聚成虚拟内容组，可选记录 AI 证据。
+export function groupNodesByAdjacency(
+  nodes: SimplifiedNode[],
+  parent?: SimplifiedNode,
+  instrumentation?: AdjacencyClusteringInstrumentationStrategy,
+): SimplifiedNode[] {
+  instrumentation?.configure({
+    maxMainAxisGapRatio: MAX_MAIN_AXIS_GAP_RATIO,
+    minCrossAxisOverlapRatio: MIN_CROSS_AXIS_OVERLAP_RATIO,
+    maxMergedEmptyRatio: MAX_MERGED_EMPTY_RATIO,
+  });
   for (const node of nodes) {
     if (node.needsDownstreamProcessing && node.children?.length) {
-      node.children = groupNodesByAdjacency(node.children, node);
+      node.children = groupNodesByAdjacency(node.children, node, instrumentation);
     }
   }
 
@@ -85,6 +96,11 @@ export function groupNodesByAdjacency(nodes: SimplifiedNode[], parent?: Simplifi
       const minIndex = Math.min(...clusterItems.map(item => item.index));
 
       finalNodesWithOrder.push({ index: minIndex, node: group });
+      instrumentation?.recordCluster({
+        groupId: group.id,
+        direction,
+        memberCount: sortedChildren.length,
+      });
     } else {
       const item = clusterItems[0];
       finalNodesWithOrder.push({ index: item.index, node: item.node });

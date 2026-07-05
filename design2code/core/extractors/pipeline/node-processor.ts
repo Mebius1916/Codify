@@ -6,6 +6,7 @@ import type {
 import { processNodes } from "./utils/core-process.js";
 import { flattenRedundantNodes } from "../algorithms/flattening.js";
 import { normalizeNodeStyles } from "../algorithms/style-normalization.js";
+import type { InstrumentationHub } from "../../instrumentation/hub.js";
 
 /**
  * Traverse the Figma node tree and extract simplified nodes.
@@ -16,6 +17,7 @@ import { normalizeNodeStyles } from "../algorithms/style-normalization.js";
 export function extractFromDesign(
   nodes: any[], // Raw Figma nodes
   globalVars: TraversalContext["globalVars"] = { styles: {} },
+  instrumentation?: InstrumentationHub,
 ): { nodes: SimplifiedNode[]; globalVars: TraversalContext["globalVars"] } {
 
   const context: TraversalContext = {
@@ -26,7 +28,7 @@ export function extractFromDesign(
 
   // 1. Extraction Phase (with Injected Structure Pass)
   let rootNodes = processNodes(nodes, context, (children, parent) =>
-    runReconstructionPipeline(children, globalVars, undefined, parent),
+    runReconstructionPipeline(children, globalVars, parent, instrumentation),
   );
 
   // 2. Flattening Phase

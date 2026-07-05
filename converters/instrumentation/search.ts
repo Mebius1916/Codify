@@ -57,7 +57,7 @@ export function readInstrumentationStrategyPoint(
 
       const result = terms.length > 0
         ? scoreRecord(packet, record, terms, packetIndex, recordIndex)
-        : toSearchResult(packet, record, 0, packetIndex, recordIndex);
+        : toSearchResult(record, 0, packetIndex, recordIndex);
       if (terms.length > 0 && result.score <= 0) return;
       records.push(result);
     });
@@ -74,6 +74,7 @@ export function readInstrumentationStrategyPoint(
   };
 }
 
+// 对单条记录按关键词命中情况打分。
 function scoreRecord(
   packet: InstrumentationPacket,
   record: InstrumentationRecord,
@@ -99,11 +100,11 @@ function scoreRecord(
     return sum;
   }, 0);
 
-  return toSearchResult(packet, record, score, packetIndex, recordIndex);
+  return toSearchResult(record, score, packetIndex, recordIndex);
 }
 
+// 把内部记录转换为对外缩略搜索结果。
 function toSearchResult(
-  packet: InstrumentationPacket,
   record: InstrumentationRecord,
   score: number,
   packetIndex: number,
@@ -122,6 +123,7 @@ function toSearchResult(
   };
 }
 
+// 归一化文本用于关键词匹配。
 function normalize(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5_.-]+/g, " ").trim();
 }

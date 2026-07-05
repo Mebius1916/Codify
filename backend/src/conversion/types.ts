@@ -1,10 +1,12 @@
 import type { AgentProgressEvent } from '@codify/agent'
+import type { InstrumentationPacket } from '@codify/converters'
 
 export interface CodegenResult {
   html: string
   body: string
   css: string
   size?: { width: number; height: number }
+  instrumentation?: InstrumentationPacket[]
 }
 
 export interface FigmaNodeRef {

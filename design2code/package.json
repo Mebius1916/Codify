@@ -15,6 +15,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@codify/converters": "workspace:*",
     "@types/uuid": "^10.0.0",
     "body-parser": "^2.2.2",
     "cors": "^2.8.6",

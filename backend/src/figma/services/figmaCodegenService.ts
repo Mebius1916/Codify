@@ -17,6 +17,7 @@ export class FigmaCodegenService {
     figmaData: unknown
     nodeRef: FigmaNodeRef
     token: string
+    collectInstrumentation?: boolean
   }): Promise<CodegenResult> {
     try {
       const result = await convertFigmaToCode(
@@ -27,9 +28,16 @@ export class FigmaCodegenService {
           scale: 1,
           format: 'png',
           fetcher: this.createAssetUrlCacheFetcher(input.nodeRef.fileKey),
+          collectInstrumentation: input.collectInstrumentation,
         },
       )
-      return { html: result.html, body: result.body, css: result.css, size: result.size }
+      return {
+        html: result.html,
+        body: result.body,
+        css: result.css,
+        size: result.size,
+        instrumentation: result.instrumentation,
+      }
     } catch {
       throw new BadRequestException('Figma 转换失败')
     }

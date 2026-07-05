@@ -4,6 +4,7 @@ import { createVirtualFrame } from "./utils/virtual-node.js";
 import { areRectsTouching, getUnionRect, calculateRelativePosition } from "../../utils/geometry.js";
 import { UnionFind } from "./utils/union-find.js";
 import { isMergeCandidate } from "../../utils/candidate-check.js";
+import type { SpatialMergingInstrumentationStrategy } from "../../instrumentation/strategies/spatial-merging.js";
 
 type IconPart = {
   index: number;
@@ -17,10 +18,16 @@ const ICON_CLUSTER_RULES = {
   repeatedSequenceTolerance: 2,
 } as const;
 
-export function mergeSpatialIcons(nodes: SimplifiedNode[], parent?: SimplifiedNode): SimplifiedNode[] {
+// 将相邻的碎片图标合并成单个虚拟图标节点，可选记录 AI 证据。
+export function mergeSpatialIcons(
+  nodes: SimplifiedNode[],
+  parent?: SimplifiedNode,
+  instrumentation?: SpatialMergingInstrumentationStrategy,
+): SimplifiedNode[] {
+  instrumentation?.configure(ICON_CLUSTER_RULES);
   for (const node of nodes) {
     if (node.needsDownstreamProcessing && node.children?.length) {
-      node.children = mergeSpatialIcons(node.children, node);
+      node.children = mergeSpatialIcons(node.children, node, instrumentation);
     }
   }
 
@@ -67,13 +74,23 @@ export function mergeSpatialIcons(nodes: SimplifiedNode[], parent?: SimplifiedNo
   const finalNodes = [...nonCandidates.map(nc => ({ node: nc.node, sortIdx: nc.index }))];
   
   for (const [_, clusterParts] of clusters) {
-    if (isValidIconCluster(clusterParts, ICON_CLUSTER_RULES.maxClusterSize)) {
+    const rejectReason = getClusterRejectReason(clusterParts, ICON_CLUSTER_RULES.maxClusterSize);
+    if (!rejectReason) {
       // 小图标合并后的虚拟节点
       const mergedNode = createMergedIconNode(clusterParts.map(c => c.node), parent);
       // 插入位置选择最早出现的碎片index
       const minIdx = Math.min(...clusterParts.map(c => c.index));
       finalNodes.push({ node: mergedNode, sortIdx: minIdx });
+      const layout = mergedNode.layout as SimplifiedLayout | undefined;
+      instrumentation?.recordMerge({
+        mergedId: mergedNode.id,
+        partCount: clusterParts.length,
+        unionWidth: mergedNode.absRect?.width ?? 0,
+        unionHeight: mergedNode.absRect?.height ?? 0,
+        position: layout?.position ?? "static",
+      });
     } else {
+      if (clusterParts.length >= 2) instrumentation?.recordReject(rejectReason);
       for (const part of clusterParts) {
         finalNodes.push({ node: part.node, sortIdx: part.index });
       }
@@ -147,17 +164,18 @@ function createMergedIconNode(parts: SimplifiedNode[], parent?: SimplifiedNode):
   return node;
 }
 
-function isValidIconCluster(parts: IconPart[], maxSize: number): boolean {
-  if (parts.length < 2) return false;
+// 判断候选簇是否应被拒绝合并，返回拒绝原因或 null（可合并）。
+function getClusterRejectReason(parts: IconPart[], maxSize: number): "too-large" | "repeated-sequence" | null {
+  if (parts.length < 2) return "too-large";
 
   const rects = parts.map((part) => part.rect);
   const unionRect = getUnionRect(rects);
-  if (unionRect.width === 0 || unionRect.height === 0) return false;
-  if (unionRect.width > maxSize || unionRect.height > maxSize) return false;
+  if (unionRect.width === 0 || unionRect.height === 0) return "too-large";
+  if (unionRect.width > maxSize || unionRect.height > maxSize) return "too-large";
 
-  if (looksLikeRepeatedIconSequence(rects)) return false;
+  if (looksLikeRepeatedIconSequence(rects)) return "repeated-sequence";
 
-  return true;
+  return null;
 }
 
 function looksLikeRepeatedIconSequence(rects: BoundingBox[]): boolean {

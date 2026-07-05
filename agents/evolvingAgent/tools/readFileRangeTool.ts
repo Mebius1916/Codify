@@ -5,7 +5,7 @@ import { tool, type StructuredToolInterface } from "@langchain/core/tools";
 import { z } from "zod";
 
 import { isSafeRepoRelativePath } from "../utils/path.js";
-import { traceTool, type SourceToolContext } from "./toolRuntime.js";
+import { anomalyGateError, traceTool, type SourceToolContext } from "./toolRuntime.js";
 
 const readFileRangeSchema = z.object({
   filePath: z.string().min(1),
@@ -22,13 +22,17 @@ export function createReadFileRangeTool(context: SourceToolContext): StructuredT
       traceTool(context, "readFileRange", input, () => readRangeWithEvidence(context, input)),
     {
       name: "readFileRange",
-      description: "Read a focused source range only when CodeGraph context needs live verification.",
+      description: "Read a focused source range only when CodeGraph context needs live verification. Requires classifyAnomaly first.",
       schema: readFileRangeSchema,
     },
   );
 }
 
 async function readRangeWithEvidence(context: SourceToolContext, input: ReadFileRangeInput): Promise<string> {
+  // 约束层门闩：未完成异常分类前不允许读取源码
+  const blocked = anomalyGateError(context.anomalyGate);
+  if (blocked) return blocked.error;
+
   const result = await readFileRange(
     context.repoRoot,
     input.filePath,

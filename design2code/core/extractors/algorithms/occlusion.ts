@@ -4,7 +4,15 @@ import { hasVisibleStyles } from "../../utils/node-check.js";
 import type { BoundingBox } from "../../types/simplified-types.js";
 import type { TraversalContext } from "../../types/extractor-types.js";
 import { resolveNodeFills } from "./utils/check-fills.js";
-import type { OcclusionInstrumentationStrategy } from "../../instrumentation/strategies/occlusion/index.js";
+import { evaluateOpaqueOccluder, isOpaqueCssColor, type OpaqueOccluderEvaluation } from "../../utils/paint-opacity.js";
+import type {
+  OcclusionInstrumentationStrategy,
+  FillStats,
+  OccluderDecisionRecord,
+  OcclusionDecisionRecord,
+  VisibleContentRule,
+  VisibleContentStats,
+} from "../../instrumentation/strategies/occlusion.js";
 
 // 移除被上层不透明兄弟节点完全遮挡的节点，并可选记录 AI 证据。
 export function removeOccludedNodes(
@@ -13,14 +21,11 @@ export function removeOccludedNodes(
   instrumentation?: OcclusionInstrumentationStrategy,
 ): SimplifiedNode[] {
   if (nodes.length === 0) {
-    instrumentation?.startStage(0);
-    instrumentation?.finish(0);
     return [];
   }
 
   const visibleNodes: SimplifiedNode[] = []; // 有效节点
   const occluders: BoundingBox[] = []; // 遮罩层
-  instrumentation?.startStage(nodes.length);
 
   for (let i = nodes.length - 1; i >= 0; i--) {
     const node = nodes[i];
@@ -50,136 +55,148 @@ export function removeOccludedNodes(
     }
 
     // 判断当前节点露出部分是否有可见内容
-    const isOccluded = remainingRegions.length === 0 || !hasVisibleContentInRegions(node, remainingRegions);
-    instrumentation?.recordNodeEvaluation({
+    const visibleContent = getVisibleContent(node, remainingRegions);
+    const isOccluded = remainingRegions.length === 0 || !visibleContent.result;
+    instrumentation?.recordNodeDecision(toNodeDecision(
       node,
       rect,
       remainingRegions,
-      occluderRects: occluders,
+      occluders,
       isOccluded,
-    });
+      visibleContent.rule,
+      visibleContent.stats,
+    ));
 
     if (!isOccluded) {
       visibleNodes.unshift(node);
 
       // 加入遮罩层
-      const opaque = isOpaque(node, globalVars);
-      instrumentation?.recordOccluderEvaluation({
-        node,
-        rect,
-        globalVars,
-        isOpaque: opaque,
-      });
-      if (opaque) {
+      const fills = resolveNodeFills(node, globalVars);
+      const opaqueEvaluation = evaluateOpaqueOccluder(node, fills);
+      instrumentation?.recordOccluderDecision(toOccluderDecision(node, fills, opaqueEvaluation));
+      if (opaqueEvaluation.result) {
         occluders.push(rect);
       }
     }
   }
 
-  instrumentation?.finish(visibleNodes.length);
+  instrumentation?.recordStage(nodes.length, visibleNodes.length);
   return visibleNodes;
 }
 
 // 判断节点在剩余区域中是否仍有可见内容。
-function hasVisibleContentInRegions(node: SimplifiedNode, regions: BoundingBox[]): boolean {
-  // 1. Leaf Nodes (Text, Icon, Image) are inherently visible if they are not fully occluded.
+function getVisibleContent(
+  node: SimplifiedNode,
+  regions: BoundingBox[],
+): { result: boolean; rule: VisibleContentRule; stats: VisibleContentStats } {
+  const emptyStats = { hitChildCount: 0, maxChildIntersectionAreaRatio: 0 };
   if (node.type === "TEXT" || node.type === "SVG" || node.type === "IMAGE") {
-    return true;
+    return { result: true, rule: "leaf-node", stats: emptyStats };
   }
+  if (hasVisibleStyles(node)) return { result: true, rule: "visible-style", stats: emptyStats };
 
-  // 2. Check if node has visible background/border/effects
-  if (hasVisibleStyles(node)) {
-    return true;
+  const childHit = collectChildHit(node.children ?? [], regions);
+  if (childHit.hitChildCount > 0) {
+    return { result: true, rule: "child-intersection", stats: childHit };
   }
-
-  // 3. If node is transparent container (no fill/stroke), check if any child falls in the remaining regions
-  if (node.children && node.children.length > 0) {
-    for (const child of node.children) {
-      const childRect = getNodeBoundingBox(child);
-      if (!childRect) continue;
-
-      // Check if child intersects with any remaining region
-      for (const region of regions) {
-        // Simple AABB intersection check
-        if (
-          childRect.x < region.x + region.width &&
-          childRect.x + childRect.width > region.x &&
-          childRect.y < region.y + region.height &&
-          childRect.y + childRect.height > region.y
-        ) {
-          return true; // Found a visible child
-        }
-      }
-    }
-    return false;
-  }
-  return false;
+  return { result: false, rule: "no-visible-content", stats: emptyStats };
 }
 
-// 判断节点是否可作为完全不透明的矩形遮挡层。
-function isOpaque(node: SimplifiedNode, globalVars?: TraversalContext["globalVars"]): boolean {
-  // 1. Type Check: Non-rectangular shapes are never opaque occluders
-  if (node.type === "TEXT" || node.type === "SVG") return false;
-  
-  // 2. Opacity Check: Must be fully opaque
-  if (node.opacity !== undefined && node.opacity < 1) return false;
-
-  // 3. Blend modes are not simple rectangle coverage.
-  if (node.blendMode && node.blendMode !== "normal") return false;
-
-  // 4. Images may contain transparent pixels or masks, so do not use them as full occluders.
-  if (node.type === "IMAGE") return false;
-
-  // 5. Fill Check: only a single fully opaque solid fill can block vision.
-  const fills = resolveNodeFills(node, globalVars);
-  if (!isSingleOpaqueSolidFill(fills)) return false;
-
-  // 6. Border Radius Check: Must be a sharp rectangle
-  if (node.borderRadius && node.borderRadius !== "0px" && node.borderRadius !== "0") return false;
-
-  return true;
+// 将节点遮挡结果整理为 instrumentation 记录。
+function toNodeDecision(
+  node: SimplifiedNode,
+  rect: BoundingBox,
+  remainingRegions: BoundingBox[],
+  occluders: BoundingBox[],
+  isOccluded: boolean,
+  visibleContentRule: VisibleContentRule,
+  visibleContentStats: VisibleContentStats,
+): OcclusionDecisionRecord {
+  const originalArea = getArea(rect);
+  const remainingArea = remainingRegions.reduce((sum, region) => sum + getArea(region), 0);
+  return {
+    id: node.id,
+    name: node.name,
+    nodeType: node.type,
+    action: isOccluded ? "remove" : "keep",
+    reason: remainingRegions.length === 0 ? "fully-covered" : visibleContentRule,
+    remainingAreaRatio: originalArea > 0 ? remainingArea / originalArea : 0,
+    remainingRegionCount: remainingRegions.length,
+    visibleContentRule,
+    hitChildCount: visibleContentStats.hitChildCount,
+    maxChildIntersectionAreaRatio: visibleContentStats.maxChildIntersectionAreaRatio,
+    occluderInfluenceCount: countOverlappingOccluders(rect, occluders),
+  };
 }
 
-// 判断填充是否为单一完全不透明 solid。
-function isSingleOpaqueSolidFill(fills: unknown): boolean {
-  if (typeof fills === "string") return isOpaqueCssColor(fills);
-  if (!Array.isArray(fills) || fills.length !== 1) return false;
+// 将遮挡层资格判断整理为 instrumentation 记录。
+function toOccluderDecision(
+  node: SimplifiedNode,
+  fills: unknown,
+  opaqueEvaluation: OpaqueOccluderEvaluation,
+): OccluderDecisionRecord {
+  const fillStats = describeFill(fills);
+  return {
+    id: node.id,
+    name: node.name,
+    nodeType: node.type,
+    action: opaqueEvaluation.result ? "add-occluder" : "reject-occluder",
+    opaqueRule: opaqueEvaluation.rule,
+    opacity: node.opacity,
+    blendMode: node.blendMode,
+    borderRadius: node.borderRadius,
+    ...fillStats,
+  };
+}
 
+// 统计当前节点与多少个已接受遮挡层发生重叠。
+function countOverlappingOccluders(rect: BoundingBox, occluders: BoundingBox[]): number {
+  return occluders.filter((occluder) => getIntersectionArea(rect, occluder) > 0).length;
+}
+
+// 统计子节点与剩余可见区域的命中情况。
+function collectChildHit(children: SimplifiedNode[], regions: BoundingBox[]) {
+  let hitChildCount = 0;
+  let maxChildIntersectionAreaRatio = 0;
+  for (const child of children) {
+    const childRect = getNodeBoundingBox(child);
+    if (!childRect) continue;
+    const intersectionArea = regions.reduce((sum, region) => sum + getIntersectionArea(childRect, region), 0);
+    if (intersectionArea <= 0) continue;
+    hitChildCount += 1;
+    maxChildIntersectionAreaRatio = Math.max(
+      maxChildIntersectionAreaRatio,
+      getArea(childRect) > 0 ? intersectionArea / getArea(childRect) : 0,
+    );
+  }
+  return { hitChildCount, maxChildIntersectionAreaRatio };
+}
+
+// 提取填充类型和不透明性摘要。
+function describeFill(fills: unknown): FillStats {
+  if (typeof fills === "string") return { fillKind: "css-color", fillColorOpaque: isOpaqueCssColor(fills) };
+  if (!Array.isArray(fills)) return { fillKind: fills ? "unresolved" : "none" };
+  if (fills.length !== 1) return { fillKind: fills.length > 1 ? "multi-paint" : "none" };
   const fill = fills[0];
-  if (typeof fill === "string") return isOpaqueCssColor(fill);
-  if (!fill || typeof fill !== "object") return false;
-
-  const paint = fill as { type?: string; visible?: boolean; opacity?: number; color?: unknown; blendMode?: string };
-  if (paint.visible === false) return false;
-  if ((paint.opacity ?? 1) < 1) return false;
-  if (paint.type !== "SOLID") return false;
-  if (paint.blendMode && paint.blendMode !== "normal") return false;
-  return typeof paint.color === "string" && isOpaqueCssColor(paint.color);
+  if (typeof fill === "string") return { fillKind: "css-color", fillColorOpaque: isOpaqueCssColor(fill) };
+  if (!fill || typeof fill !== "object") return { fillKind: "unresolved" };
+  const paint = fill as { color?: unknown };
+  return {
+    fillKind: "single-paint",
+    fillColorOpaque: typeof paint.color === "string" ? isOpaqueCssColor(paint.color) : undefined,
+  };
 }
 
-// 判断 CSS 颜色字符串是否可视为完全不透明。
-function isOpaqueCssColor(value: string): boolean {
-  const color = value.trim().toLowerCase();
-  if (!color || color === "transparent") return false;
-  if (color.startsWith("var(")) {
-    const fallback = getCssVarFallback(color);
-    return fallback ? isOpaqueCssColor(fallback) : false;
-  }
-  if (color === "black" || color === "white") return true;
-  if (/^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(color)) return true;
-  if (color.startsWith("rgb(")) return true;
-  if (!color.startsWith("rgba(")) return false;
-
-  const alpha = Number(color.replace("rgba(", "").replace(")", "").split(",")[3]);
-  return Number.isFinite(alpha) && alpha >= 1;
+// 计算矩形面积，并防止负宽高产生负面积。
+function getArea(rect: BoundingBox): number {
+  return Math.max(0, rect.width) * Math.max(0, rect.height);
 }
 
-// 提取 CSS var 的 fallback 颜色。
-function getCssVarFallback(value: string): string | null {
-  const match = value.match(/^var\((.+)\)$/);
-  if (!match) return null;
-
-  const commaIndex = match[1].indexOf(",");
-  if (commaIndex === -1) return null;
-  return match[1].slice(commaIndex + 1).trim();
+// 计算两个矩形的相交面积。
+function getIntersectionArea(a: BoundingBox, b: BoundingBox): number {
+  const x1 = Math.max(a.x, b.x);
+  const y1 = Math.max(a.y, b.y);
+  const x2 = Math.min(a.x + a.width, b.x + b.width);
+  const y2 = Math.min(a.y + a.height, b.y + b.height);
+  return Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
 }

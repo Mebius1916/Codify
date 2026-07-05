@@ -4,6 +4,7 @@ import type {
 } from "@figma/rest-api-spec";
 import { simplifyComponents, simplifyComponentSets } from "../../transformers/component.js";
 import type { SimplifiedDesign, TraversalContext } from "../../types/extractor-types.js";
+import type { InstrumentationHub } from "../../instrumentation/hub.js";
 import { extractFromDesign } from "./node-processor.js";
 import { resolveImageAssetsFromFigma } from "./image-assets.js";
 import { parseAPIResponse } from "./utils/parse-api.js";
@@ -25,6 +26,7 @@ export async function simplifyRawFigmaObjectWithImages(
     scale?: number;
     fetcher?: FetcherAdapter;
     skipAssetFetch?: boolean;
+    instrumentation?: InstrumentationHub;
   },
 ): Promise<SimplifiedDesign> {
   const { metadata, rawNodes, components, componentSets, extraStyles } =
@@ -39,6 +41,7 @@ export async function simplifyRawFigmaObjectWithImages(
   const { nodes: extractedNodes, globalVars: finalGlobalVars } = extractFromDesign(
     rawNodes,
     globalVars,
+    options.instrumentation,
   );
 
   const design: SimplifiedDesign = {

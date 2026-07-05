@@ -6,6 +6,7 @@ import { groupNodesByAdjacency } from "../algorithms/adjacency-clustering.js";
 import { inferSemanticTags } from "../algorithms/semantic-inference.js";
 import type { SimplifiedNode, TraversalContext } from "../../types/extractor-types.js";
 import { SimplifiedLayout } from "../../types/simplified-types.js";
+import type { InstrumentationHub } from "../../instrumentation/hub.js";
 
 /**
  * Structure + Layout Pipeline
@@ -14,8 +15,8 @@ import { SimplifiedLayout } from "../../types/simplified-types.js";
 export function runReconstructionPipeline(
   nodes: SimplifiedNode[],
   globalVars?: TraversalContext["globalVars"],
-  _options?: any, // 保留参数签名以减少其他文件的改动量，但不再使用
-  parent?: SimplifiedNode
+  parent?: SimplifiedNode,
+  instrumentation?: InstrumentationHub,
 ): SimplifiedNode[] {
   if (nodes.length === 0) return [];
 
@@ -23,26 +24,26 @@ export function runReconstructionPipeline(
   const processedNodesInput = [...nodes];
 
   // 1. Occlusion Culling
-  let processedNodes = removeOccludedNodes(processedNodesInput, globalVars);
+  let processedNodes = removeOccludedNodes(processedNodesInput, globalVars, instrumentation?.occlusion);
 
   // 2. Reparenting 
-  processedNodes = reparentNodes(processedNodes, parent);
+  processedNodes = reparentNodes(processedNodes, parent, instrumentation?.reparenting);
 
   // 3. Merge fragmented icon leaves before broader layout grouping.
-  processedNodes = mergeSpatialIcons(processedNodes, parent);
+  processedNodes = mergeSpatialIcons(processedNodes, parent, instrumentation?.spatialMerging);
 
   const parentLayout = parent?.layout as SimplifiedLayout | undefined;
   
   if (parentLayout?.mode !== "row" &&
       parentLayout?.mode !== "column") {
       // 4. Layout Grouping 
-      processedNodes = groupNodesByLayout(processedNodes, parent);
+      processedNodes = groupNodesByLayout(processedNodes, parent, instrumentation?.layoutGrouping);
       // 5. Adjacency Clustering
-      processedNodes = groupNodesByAdjacency(processedNodes, parent);
+      processedNodes = groupNodesByAdjacency(processedNodes, parent, instrumentation?.adjacencyClustering);
   }
 
   // 6. Semantic Inference
-  processedNodes = inferSemanticTags(processedNodes);
+  processedNodes = inferSemanticTags(processedNodes, instrumentation?.semanticInference);
 
   return processedNodes;
 }

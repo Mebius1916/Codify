@@ -1,4 +1,5 @@
 import type { SimplifiedDesign } from "../types/extractor-types.js";
+import type { InstrumentationPacket } from "../instrumentation/types.js";
 import { createCodegenContext } from "./context/index.js";
 import { generateHTMLParts } from "./html/index.js";
 
@@ -7,6 +8,7 @@ export interface CodegenResult {
   css: string;
   body: string;
   size?: { width: number; height: number };
+  instrumentation?: InstrumentationPacket[];
 }
 
 export default function codegen(design: SimplifiedDesign): CodegenResult {

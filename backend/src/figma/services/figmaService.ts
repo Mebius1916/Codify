@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common'
 import { AiEnhanceService } from '../../aiEnhance/aiEnhanceService.ts'
 import { createConvertProgressReporter, type ConvertProgressReporter } from '../../conversion/convertProgress.ts'
 import type { ConvertProgressEvent } from '../../conversion/types.ts'
+import { upsertInstrumentationPackets } from '../../sourceInsight/instrumentationStore.ts'
 import type { ConvertFigmaDto } from '../dto/convertFigmaDto.ts'
 import { FigmaApiClient } from './figmaApiClient.ts'
 import { FigmaCodegenService } from './figmaCodegenService.ts'
@@ -46,10 +47,16 @@ export class FigmaService {
       figmaData,
       nodeRef,
       token,
+      collectInstrumentation: Boolean(input.aiEnhance),
     })
 
     if (!input.aiEnhance) {
       return { codegenResult }
+    }
+
+    // 仅在 aiEnhance 时采集，把算法决策 packets 按 fileKey+nodeId 落库供 source insight 读回
+    if (codegenResult.instrumentation?.length) {
+      upsertInstrumentationPackets(nodeRef, codegenResult.instrumentation)
     }
 
     const baselinePngBase64 = await this.figmaApiClient.fetchFigmaRenderPngBase64(

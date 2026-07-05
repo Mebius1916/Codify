@@ -4,3 +4,4 @@ packages:
   - 'design2code'
   - 'agents/*'
   - 'converters'
+dangerouslyAllowAllBuilds: true

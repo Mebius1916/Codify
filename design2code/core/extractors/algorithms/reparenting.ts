@@ -6,6 +6,7 @@ import type { SimplifiedNode } from "../../types/extractor-types.js";
 import { getRectArea, isRectContained, areRectsTouching, calculateRelativePosition } from "../../utils/geometry.js";
 import { canBeParent } from "../../utils/candidate-check.js";
 import type { SimplifiedLayout } from "../../types/simplified-types.js";
+import type { ReparentingInstrumentationStrategy } from "../../instrumentation/strategies/reparenting.js";
 
 type ParentCandidate = {
   parent: SimplifiedNode;
@@ -17,11 +18,20 @@ type ParentCandidate = {
 const PARTLY_CONTAIN_THRESHOLD = 0.85;
 const ABSOLUTE_OVERLAP_THRESHOLD = -2;
 
-export function reparentNodes(nodes: SimplifiedNode[], parent?: SimplifiedNode): SimplifiedNode[] {
+// 将重叠节点收编进最合适的父节点，并把兄弟重叠标记为绝对定位，可选记录 AI 证据。
+export function reparentNodes(
+  nodes: SimplifiedNode[],
+  parent?: SimplifiedNode,
+  instrumentation?: ReparentingInstrumentationStrategy,
+): SimplifiedNode[] {
   if (nodes.length === 0) return [];
+  instrumentation?.configure({
+    partlyContainThreshold: PARTLY_CONTAIN_THRESHOLD,
+    absoluteOverlapThreshold: ABSOLUTE_OVERLAP_THRESHOLD,
+  });
   for (const node of nodes) {
     if (node.needsDownstreamProcessing && node.children?.length) {
-      node.children = reparentNodes(node.children, node);
+      node.children = reparentNodes(node.children, node, instrumentation);
     }
   }
 
@@ -48,12 +58,24 @@ export function reparentNodes(nodes: SimplifiedNode[], parent?: SimplifiedNode):
     if (bestCandidate) {
       adoptAsAbsoluteChild(bestCandidate.parent, child);
       adoptedNodes.add(child);
+      const location = calculateRelativePosition(child.absRect, bestCandidate.parent.absRect!);
+      instrumentation?.recordAdoption({
+        childId: child.id,
+        childName: child.name,
+        childType: child.type,
+        parentId: bestCandidate.parent.id,
+        parentName: bestCandidate.parent.name,
+        fullyContained: bestCandidate.fullyContained,
+        overlapRatio: bestCandidate.overlapRatio,
+        relativeX: location.x,
+        relativeY: location.y,
+      });
     }
   }
 
   // 用于存储处理后的新子节点列表 (未被吃掉的节点)
   const remainingNodes = nodes.filter(node => !adoptedNodes.has(node));
-  detectAbsoluteChildrenInList(remainingNodes, parent);
+  detectAbsoluteChildrenInList(remainingNodes, parent, instrumentation);
 
   return remainingNodes;
 }
@@ -97,7 +119,11 @@ function isBetterParentCandidate(candidate: ParentCandidate, currentBest: Parent
 }
 
 // AABB 碰撞检测，用于选出绝对定位的节点
-function detectAbsoluteChildrenInList(nodes: SimplifiedNode[], parent?: SimplifiedNode) {
+function detectAbsoluteChildrenInList(
+  nodes: SimplifiedNode[],
+  parent?: SimplifiedNode,
+  instrumentation?: ReparentingInstrumentationStrategy,
+) {
   if (nodes.length < 2) return;
 
   // Align with FigmaToCode: If parent is Auto Layout, respect native layout.
@@ -131,6 +157,12 @@ function detectAbsoluteChildrenInList(nodes: SimplifiedNode[], parent?: Simplifi
           resolvedLayout.locationRelativeToParent =  
             calculateRelativePosition(nodeA.absRect, parent.absRect);
         }
+        instrumentation?.recordAbsolutePosition({
+          nodeId: nodeA.id,
+          nodeName: nodeA.name,
+          againstId: nodeB.id,
+          againstName: nodeB.name,
+        });
       } else {
         const baseLayout: SimplifiedLayout =
           typeof nodeB.layout === "object" && nodeB.layout ? nodeB.layout : { mode: "none", sizing: {} };
@@ -145,6 +177,12 @@ function detectAbsoluteChildrenInList(nodes: SimplifiedNode[], parent?: Simplifi
           resolvedLayout.locationRelativeToParent = 
             calculateRelativePosition(nodeB.absRect, parent.absRect);
         }
+        instrumentation?.recordAbsolutePosition({
+          nodeId: nodeB.id,
+          nodeName: nodeB.name,
+          againstId: nodeA.id,
+          againstName: nodeA.name,
+        });
       }
     }
   }
