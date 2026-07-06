@@ -57,7 +57,6 @@ export function FileTreePanel({ actions, showHeader }: FileTreePanelProps) {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Download failed'
       showToast({ message, variant: 'error' })
-      console.error(error)
     } finally {
       setIsDownloading(false)
     }

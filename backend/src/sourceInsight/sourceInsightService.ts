@@ -1,44 +1,28 @@
 import { Injectable } from '@nestjs/common'
 import { randomUUID } from 'node:crypto'
+import { runEvolvingAgent } from '@codify/evolving-agent'
 import { env } from '../config/env.ts'
+import type { FigmaNodeRef } from '../conversion/types.ts'
 import { appDatabase } from '../database/appDatabase.ts'
 import { formatError, formatErrorCause } from '../logging/loggingUtils.ts'
 import { LoggingService } from '../logging/loggingService.ts'
 import { SourceRepositoryService } from '../sourceRepository/sourceRepositoryService.ts'
-import { runEvolvingAgent } from '@codify/evolving-agent'
-import type { VisualRepairObserveResult } from '@codify/agent'
 import {
   hasInstrumentationPackets,
   listNodeStrategyPoints,
   readNodeStrategyPoint,
 } from './instrumentationStore.ts'
-import type { FigmaNodeRef } from '../conversion/types.ts'
-
-export interface SourceInsightStartInput {
-  aiEnhanceRunId: string
-  nodeRef: {
-    fileKey: string
-    nodeId: string
-  }
-  observe: VisualRepairObserveResult
-  model: string
-  apiKey: string
-  baseUrl: string
-}
+import { buildSourceInsightAgentLog } from './sourceInsightAgentLog.ts'
+import { buildSourceInsightPrompt } from './sourceInsightPrompt.ts'
+import type {
+  SourceInsightAgentEvent,
+  SourceInsightStartInput,
+} from './sourceInsightTypes.ts'
 
 interface SourceInsightRunRow {
   id: string
 }
 
-type SourceInsightAgentEvent = {
-  event: string
-  details?: Record<string, unknown>
-}
-
-type SourceInsightAgentResult = Awaited<ReturnType<typeof runEvolvingAgent>>
-type SourceInsightToolTrace = SourceInsightAgentResult['toolTrace'][number]
-
-const SOURCE_INSIGHT_MAX_TOOL_CALLS = 100
 const SOURCE_INSIGHT_INCLUDE_DIRS = ['design2code']
 
 @Injectable()
@@ -77,6 +61,7 @@ export class SourceInsightService {
       module: 'sourceInsight',
       source: 'backend',
       aiEnhanceRunId: input.aiEnhanceRunId,
+      fileKey: input.nodeRef.fileKey,
       nodeId: input.nodeRef.nodeId,
     })
 
@@ -103,10 +88,7 @@ export class SourceInsightService {
     const syncedSource = this.sourceRepositoryService.syncLocalSource()
 
     if (!syncedSource) {
-      this.markSkipped(
-        runId,
-        'No database source files found for source insight',
-      )
+      this.markSkipped(runId, 'No database source files found for source insight')
       return
     }
     if (!modelOptions.apiKey.trim()) {
@@ -118,7 +100,6 @@ export class SourceInsightService {
       return
     }
 
-    // 判定该节点是否有转换算法决策记录，有则构造按需查询的 provider 注入 agent
     const hasInstrumentation = hasInstrumentationPackets(nodeRef)
     const instrumentationProvider = hasInstrumentation
       ? {
@@ -130,21 +111,6 @@ export class SourceInsightService {
           ) => readNodeStrategyPoint(nodeRef, strategyId, strategyPoint, options),
         }
       : undefined
-
-    this.loggingService.info('Source insight started', {
-      runId,
-      module: 'sourceInsight',
-      source: 'backend',
-      repoRoot: syncedSource.repoRoot,
-      includeDirs: SOURCE_INSIGHT_INCLUDE_DIRS,
-      syncedSource,
-      hasInstrumentation,
-      budget: {
-        maxToolCalls: SOURCE_INSIGHT_MAX_TOOL_CALLS,
-        maxReadLinesPerCall: 120,
-        maxGraphResults: 30,
-      },
-    })
 
     const startedAt = Date.now()
     const agentEvents: SourceInsightAgentEvent[] = []
@@ -160,9 +126,16 @@ export class SourceInsightService {
         temperature: 0,
         timeout: env.sourceInsight.timeoutMs,
         budget: {
-          maxToolCalls: SOURCE_INSIGHT_MAX_TOOL_CALLS,
+          maxToolCalls: env.sourceInsight.maxToolCalls,
           maxReadLinesPerCall: 120,
           maxGraphResults: 30,
+          maxListedFiles: env.sourceInsight.maxListedFiles,
+          maxToolTracePreviewChars: env.sourceInsight.maxToolTracePreviewChars,
+        },
+        contextCompression: {
+          contextWindowTokens: env.sourceInsight.contextWindowTokens,
+          compressRatio: env.sourceInsight.compressRatio,
+          keepRatio: env.sourceInsight.contextKeepRatio,
         },
         instrumentationProvider,
         onProgress: (event) => {
@@ -187,11 +160,18 @@ export class SourceInsightService {
           runId,
         )
 
+      const agentLog = buildSourceInsightAgentLog(agentEvents, result)
+
       this.loggingService.info('Source insight completed', {
         runId,
         module: 'sourceInsight',
         source: 'agent',
-        ...buildSourceInsightCompletedDetails(result, Date.now() - startedAt),
+        durationMs: Date.now() - startedAt,
+        toolCallCount: agentLog.toolCallCount,
+        evidenceCount: agentLog.evidenceCount,
+        classifiedStrategy: agentLog.classifiedStrategy,
+        instrumentationReadCount: agentLog.instrumentationReadCount,
+        hasEffectiveStop: agentLog.stopStats.hasEffectiveStop,
       })
     } catch (error) {
       appDatabase
@@ -204,12 +184,16 @@ export class SourceInsightService {
         `)
         .run(formatError(error), runId)
 
+      const agentLog = buildSourceInsightAgentLog(agentEvents)
+
       this.loggingService.error('Source insight failed', {
         runId,
         module: 'sourceInsight',
         source: 'backend',
         durationMs: Date.now() - startedAt,
-        partialToolSteps: summarizeAgentEvents(agentEvents),
+        toolCallCount: agentLog.toolCallCount,
+        classifiedStrategy: agentLog.classifiedStrategy,
+        instrumentationReadCount: agentLog.instrumentationReadCount,
         error: formatError(error),
         errorCause: formatErrorCause(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -235,108 +219,4 @@ export class SourceInsightService {
       reason,
     })
   }
-}
-
-function buildSourceInsightPrompt(input: SourceInsightStartInput): string {
-  return [
-    '你是源码分析 agent。请根据下面 visual observe 阶段的观察结果，静默分析源码中最可能相关的实现位置，并给出给后续修复阶段参考的工程建议。',
-    '',
-    '要求：',
-    '- 只分析源码，不修改代码。',
-    '- 优先指出相关文件、函数、数据流和可能影响视觉差异的实现点。',
-    '- 输出简洁建议，适合作为后台分析意见存入数据库。',
-    '- 如果证据不足，明确说明不确定点。',
-    '- 最多做少量高价值源码探索，拿到可用建议后立即停止，不要穷尽整个仓库。',
-    '- 可分析源码范围已经固定为 design2code，只需要决定搜索什么，不需要决定去哪里搜。',
-    '- 优先围绕 observe 中的视觉问题类型搜索 HTML 生成、CSS 生成、布局、文本、图片、样式提取相关实现。',
-    '- 每个主要结论必须至少有一个 readFileRange 证据支撑，并引用文件路径与行号。',
-    '- 搜索前必须先调用 classifyAnomaly，把该异常归入“现有算法策略之一”或 “other”（不属于任何策略时），未分类前 exploreSource / readFileRange / searchInstrumentation 都不可用。',
-    '- 若提供了 searchInstrumentation 工具，请优先用它查询转换算法在该节点上的决策记录（先 mode="list" 看有哪些策略决策点，再 mode="read" 逐条阅读），作为异常定位的首要线索，然后再用 readFileRange 到源码验证。',
-    '- 只通过 exploreSource 看到但没有 readFileRange 验证过的文件，只能放入“待验证候选方向”，不能写成确定结论。',
-    '- 最终回答请分为“已验证结论”和“待验证候选方向”。',
-    '',
-    `<figmaNode fileKey="${input.nodeRef.fileKey}" nodeId="${input.nodeRef.nodeId}" />`,
-    '',
-    '<observe>',
-    JSON.stringify(input.observe, null, 2),
-    '</observe>',
-  ].join('\n')
-}
-
-function buildSourceInsightCompletedDetails(
-  result: SourceInsightAgentResult,
-  durationMs: number,
-) {
-  const toolSteps = result.toolTrace.map(formatToolStep)
-  const evidenceRanges = result.evidence.map((item) => ({
-    filePath: item.filePath,
-    lines: `${item.startLine}-${item.endLine}`,
-    reason: item.reason,
-  }))
-
-  return {
-    durationMs,
-    answer: result.answer,
-    report: [
-      `durationMs: ${durationMs}`,
-      `toolCalls: ${result.toolTrace.length}`,
-      `evidenceRanges: ${result.evidence.length}`,
-      '',
-      'toolSteps:',
-      ...toolSteps.map((step) => `- ${step}`),
-      '',
-      'evidence:',
-      ...evidenceRanges.map(
-        (item) => `- ${item.filePath}:${item.lines} (${item.reason})`,
-      ),
-      '',
-      'answer:',
-      result.answer,
-    ].join('\n'),
-    toolSteps,
-    evidenceRanges,
-    summary: {
-      toolCallCount: result.toolTrace.length,
-      evidenceCount: result.evidence.length,
-    },
-  }
-}
-
-function formatToolStep(trace: SourceInsightToolTrace, index: number): string {
-  const input = trace.input
-  const step = `${index + 1}. ${trace.toolName}`
-
-  if (trace.toolName === 'exploreSource') {
-    return `${step} query="${String(input.query ?? '')}"`
-  }
-
-  if (trace.toolName === 'readFileRange') {
-    return [
-      `${step}`,
-      `${String(input.filePath ?? '')}:${String(input.startLine ?? '?')}-${String(input.endLine ?? '?')}`,
-      `reason="${String(input.reason ?? '')}"`,
-    ].join(' ')
-  }
-
-  return `${step} input=${JSON.stringify(input)}`
-}
-
-function summarizeAgentEvents(events: SourceInsightAgentEvent[]): string[] {
-  return events
-    .filter((event) => event.event === 'evolvingAgent.tool')
-    .map((event, index) => {
-      const details = event.details ?? {}
-      const input = details.input as Record<string, unknown> | undefined
-      const toolName = String(details.toolName ?? 'tool')
-      if (toolName === 'exploreSource') {
-        return `${index + 1}. exploreSource query="${String(input?.query ?? '')}"`
-      }
-      if (toolName === 'readFileRange') {
-        return [
-          `${index + 1}. readFileRange`,
-          `${String(input?.filePath ?? '')}:${String(input?.startLine ?? '?')}-${String(input?.endLine ?? '?')}`,
-        ].join(' ')
-      }
-      return `${index + 1}. ${toolName}`
-    })
 }

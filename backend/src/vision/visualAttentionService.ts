@@ -26,15 +26,6 @@ export class VisualAttentionService {
       const renderedImage = decodePngBase64(input.renderedPngBase64)
 
       if (figmaImage.width !== renderedImage.width || figmaImage.height !== renderedImage.height) {
-        this.loggingService.info('Visual attention skipped because image sizes differ', {
-          runId: input.runId,
-          module: 'vision',
-          source: 'backend',
-          figmaWidth: figmaImage.width,
-          figmaHeight: figmaImage.height,
-          renderedWidth: renderedImage.width,
-          renderedHeight: renderedImage.height,
-        })
         return { visualEvidencePngBase64: input.figmaPngBase64 }
       }
 
@@ -45,13 +36,6 @@ export class VisualAttentionService {
 
       const diffMap = buildPatchDiffMap(figmaFeatures, renderedFeatures)
       if (!diffMap) {
-        this.loggingService.info('Visual attention skipped because DINOv2 patch grids differ', {
-          runId: input.runId,
-          module: 'vision',
-          source: 'backend',
-          figmaGrid: `${figmaFeatures.gridWidth}x${figmaFeatures.gridHeight}`,
-          renderedGrid: `${renderedFeatures.gridWidth}x${renderedFeatures.gridHeight}`,
-        })
         return { visualEvidencePngBase64: input.figmaPngBase64 }
       }
 
@@ -62,67 +46,10 @@ export class VisualAttentionService {
       const internalRegions = regionMerge.regions
 
       if (!internalRegions.length) {
-        this.loggingService.info('Visual attention completed with no obvious structural regions', {
-          runId: input.runId,
-          module: 'vision',
-          source: 'backend',
-          width: figmaImage.width,
-          height: figmaImage.height,
-          figmaGrid: `${figmaFeatures.gridWidth}x${figmaFeatures.gridHeight}`,
-          renderedGrid: `${renderedFeatures.gridWidth}x${renderedFeatures.gridHeight}`,
-          hiddenSize: figmaFeatures.hiddenSize,
-          patchGrid: `${diffMap.width}x${diffMap.height}`,
-          patchCount: diffMap.distances.length,
-          anomalousPatchCount: diffMap.anomalousPatches.length,
-          medianDistance: Number(diffMap.medianDistance.toFixed(6)),
-          madDistance: Number(diffMap.madDistance.toFixed(6)),
-          hampelThreshold: Number(diffMap.hampelThreshold.toFixed(6)),
-          percentileThreshold: Number(diffMap.percentileThreshold.toFixed(6)),
-          threshold: Number(diffMap.threshold.toFixed(6)),
-          minDistance: Number(diffMap.minDistance.toFixed(6)),
-          maxDistance: Number(diffMap.maxDistance.toFixed(6)),
-          initialRegionCount: regionMerge.initialRegionCount,
-          filteredRegionCount: regionMerge.filteredRegionCount,
-          finalRegionCount: internalRegions.length,
-          minRegionPatchCount: regionMerge.minRegionPatchCount,
-          minRegionArea: regionMerge.minRegionArea,
-          minRegionFillRatio: regionMerge.minRegionFillRatio,
-        })
         return { visualEvidencePngBase64: input.figmaPngBase64 }
       }
 
       const visualEvidencePngBase64 = buildVisualEvidenceSheet(figmaImage, internalRegions)
-      this.loggingService.info('Visual attention completed', {
-        runId: input.runId,
-        module: 'vision',
-        source: 'backend',
-        width: figmaImage.width,
-        height: figmaImage.height,
-        figmaGrid: `${figmaFeatures.gridWidth}x${figmaFeatures.gridHeight}`,
-        renderedGrid: `${renderedFeatures.gridWidth}x${renderedFeatures.gridHeight}`,
-        hiddenSize: figmaFeatures.hiddenSize,
-        patchGrid: `${diffMap.width}x${diffMap.height}`,
-        patchCount: diffMap.distances.length,
-        anomalousPatchCount: diffMap.anomalousPatches.length,
-        medianDistance: Number(diffMap.medianDistance.toFixed(6)),
-        madDistance: Number(diffMap.madDistance.toFixed(6)),
-        hampelThreshold: Number(diffMap.hampelThreshold.toFixed(6)),
-        percentileThreshold: Number(diffMap.percentileThreshold.toFixed(6)),
-        threshold: Number(diffMap.threshold.toFixed(6)),
-        minDistance: Number(diffMap.minDistance.toFixed(6)),
-        maxDistance: Number(diffMap.maxDistance.toFixed(6)),
-        initialRegionCount: regionMerge.initialRegionCount,
-        filteredRegionCount: regionMerge.filteredRegionCount,
-        finalRegionCount: internalRegions.length,
-        minRegionPatchCount: regionMerge.minRegionPatchCount,
-        minRegionArea: regionMerge.minRegionArea,
-        minRegionFillRatio: regionMerge.minRegionFillRatio,
-        regions: internalRegions.map((region) => ({
-          id: region.id,
-          bbox: region.bbox,
-          diffScore: Number(region.diffScore.toFixed(6)),
-        })),
-      })
 
       return {
         visualEvidencePngBase64,

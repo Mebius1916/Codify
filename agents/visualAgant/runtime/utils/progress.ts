@@ -48,7 +48,6 @@ export async function runWithAgentProgress<T>(
 ): Promise<T> {
   const startedAt = Date.now();
   throwIfAgentAborted(context);
-  reportAgentProgress(context, event, { status: "start" });
 
   try {
     const result = await task();

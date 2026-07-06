@@ -30,6 +30,14 @@ export interface SourceAgentBudget {
   maxReadLinesPerCall?: number;
   maxSearchResults?: number;
   maxGraphResults?: number;
+  maxListedFiles?: number;
+  maxToolTracePreviewChars?: number;
+}
+
+export interface SourceAgentContextCompression {
+  contextWindowTokens: number;
+  compressRatio: number;
+  keepRatio: number;
 }
 
 export interface SourceAgentEvidence {
@@ -57,6 +65,7 @@ export interface RunSourceAgentInput {
   temperature?: number;
   timeout?: number;
   budget?: SourceAgentBudget;
+  contextCompression?: SourceAgentContextCompression;
   instrumentationProvider?: InstrumentationProvider;
   onProgress?: (event: SourceAgentProgressEvent) => void;
   abortSignal?: AbortSignal;

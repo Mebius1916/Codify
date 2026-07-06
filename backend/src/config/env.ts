@@ -29,6 +29,12 @@ interface EnvConfig {
   }
   sourceInsight: {
     timeoutMs: number
+    maxToolCalls: number
+    contextWindowTokens: number
+    compressRatio: number
+    contextKeepRatio: number
+    maxListedFiles: number
+    maxToolTracePreviewChars: number
   }
 }
 
@@ -64,5 +70,11 @@ export const env: EnvConfig = {
   },
   sourceInsight: {
     timeoutMs: Number(process.env.SOURCE_INSIGHT_TIMEOUT_MS ?? 2 * 60_000),
+    maxToolCalls: Number(process.env.SOURCE_INSIGHT_MAX_TOOL_CALLS ?? 100),
+    contextWindowTokens: Number(process.env.SOURCE_INSIGHT_CONTEXT_WINDOW_TOKENS ?? 128_000),
+    compressRatio: Number(process.env.SOURCE_INSIGHT_COMPRESS_RATIO ?? 0.7),
+    contextKeepRatio: Number(process.env.SOURCE_INSIGHT_CONTEXT_KEEP_RATIO ?? 0.5),
+    maxListedFiles: Number(process.env.SOURCE_INSIGHT_MAX_LISTED_FILES ?? 200),
+    maxToolTracePreviewChars: Number(process.env.SOURCE_INSIGHT_MAX_TOOL_TRACE_PREVIEW_CHARS ?? 2_000),
   },
 }

@@ -1,21 +1,21 @@
-import { HumanMessage } from "@langchain/core/messages";
-import codeGraphPackage, {
-  type CodeGraph as UpstreamCodeGraphInstance,
-} from "@colbymchenry/codegraph";
-import { createAgent } from "langchain";
+import { createAgent, type AnyAgentMiddleware } from "langchain";
 
 import type {
   RunSourceAgentInput,
   RunSourceAgentResult,
 } from "./interfaces/index.js";
+import { createReadyCodeGraph } from "./runtime/bootstrap/codeGraphRuntime.js";
 import { createLLM } from "./llm/createLLM.js";
-import { formatCodeGraphStats } from "./runtime/codeGraphStats.js";
-import { createRepoProfile } from "./runtime/repoProfile.js";
-import { createSourceExplorerPrompt } from "./runtime/sourceExplorerPrompt.js";
-import { createSourceTools } from "./tools/sourceTools.js";
+import { formatCodeGraphStats } from "./runtime/profile/codeGraphStats.js";
+import { createContextCompressionMiddleware } from "./runtime/bootstrap/contextCompression.js";
+import { createLoopTerminationMiddleware } from "./runtime/loop/loopTermination.js";
+import { createRepoProfile } from "./runtime/profile/repoProfile.js";
+import { createSourceExplorerPrompt } from "./runtime/prompt/sourceExplorerPrompt.js";
+import { createSourceQuestionMessage } from "./runtime/bootstrap/sourceQuestionPrompt.js";
+import { assertReadySourceState } from "./runtime/bootstrap/sourceStateAssert.js";
+import { createSourceTools } from "./tools/source/sourceTools.js";
 import { extractMessageText } from "./utils/text.js";
 
-const { CodeGraph } = codeGraphPackage;
 const DEFAULT_MAX_TOOL_CALLS = 18; // 最多调用次数
 
 export async function runEvolvingAgent(
@@ -32,7 +32,7 @@ export async function runEvolvingAgent(
     },
   });
 
-  const codeGraph = await createCodeGraph(input.repoRoot);
+  const codeGraph = await createReadyCodeGraph(input.repoRoot);
   const repoProfile = await createRepoProfile({
     repoRoot: input.repoRoot,
     includeDirs: input.includeDirs,
@@ -47,6 +47,11 @@ export async function runEvolvingAgent(
     temperature: input.temperature ?? 0,
     timeout: input.timeout,
   });
+  const contextCompressionMiddleware = createContextCompressionMiddleware(
+    llm,
+    input.contextCompression,
+  );
+  const anomalyGate = { strategy: null };
 
   // 激活工具
   const tools = createSourceTools({
@@ -57,7 +62,7 @@ export async function runEvolvingAgent(
     evidence,
     toolTrace,
     instrumentationProvider: input.instrumentationProvider,
-    anomalyGate: { strategy: null },
+    anomalyGate,
     onToolCall: (trace) => {
       input.onProgress?.({
         event: "evolvingAgent.tool",
@@ -68,11 +73,23 @@ export async function runEvolvingAgent(
       });
     },
   });
+  const loopTerminationMiddleware = createLoopTerminationMiddleware({
+    evidence,
+    toolTrace,
+    anomalyGate,
+    hasInstrumentation: Boolean(input.instrumentationProvider),
+    onProgress: input.onProgress,
+  });
+  const middleware: AnyAgentMiddleware[] = [
+    ...contextCompressionMiddleware,
+    loopTerminationMiddleware,
+  ];
 
   // 创建智能体
   const agent = createAgent({
     model: llm,
     tools,
+    middleware,
     systemPrompt: createSourceExplorerPrompt(
       repoProfile,
       Boolean(input.instrumentationProvider),
@@ -90,20 +107,7 @@ export async function runEvolvingAgent(
     const result = await agent.invoke(
       {
         messages: [
-          new HumanMessage({
-            content: [
-              "Answer the source question below by autonomously inspecting the repository.",
-              "Use exploreSource first for architecture, flow, or feature questions.",
-              "The caller has already configured the available source range; focus on what to search, not where to search.",
-              "exploreSource already returns the file structure; do not pass file listing controls.",
-              "Use readFileRange only when you need live focused evidence beyond CodeGraph output.",
-              "Keep the final answer concise, evidence-backed, and cite file paths with line ranges.",
-              "",
-              "<question>",
-              input.question,
-              "</question>",
-            ].join("\n"),
-          }),
+          createSourceQuestionMessage(input.question),
         ],
       },
       {
@@ -121,37 +125,5 @@ export async function runEvolvingAgent(
     };
   } finally {
     codeGraph.close();
-  }
-}
-
-async function createCodeGraph(
-  repoRoot: string,
-): Promise<UpstreamCodeGraphInstance> {
-  const graph = CodeGraph.isInitialized(repoRoot)
-    ? await CodeGraph.open(repoRoot, { sync: true })
-    : await CodeGraph.init(repoRoot, { index: false });
-
-  if (graph.getStats().fileCount === 0 || graph.isIndexStale()) {
-    await graph.indexAll();
-  }
-
-  return graph;
-}
-
-function assertReadySourceState(
-  sourceState: RunSourceAgentInput["sourceState"],
-): void {
-  if (!sourceState) return;
-
-  if (sourceState.indexStatus !== "ready") {
-    throw new Error(
-      `Source index is not ready: ${sourceState.indexStatus}`,
-    );
-  }
-
-  if (sourceState.sourceVersion !== sourceState.indexVersion) {
-    throw new Error(
-      `Source/index version mismatch: sourceVersion=${sourceState.sourceVersion}, indexVersion=${sourceState.indexVersion}`,
-    );
   }
 }

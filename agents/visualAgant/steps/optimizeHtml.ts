@@ -5,6 +5,8 @@ import {
   htmlCssResultSchema,
   type HtmlCssResult,
 } from "../interfaces/htmlCssResult.js";
+import type { ObserveGroup } from "../interfaces/observeFinding.js";
+import type { RepairPlanGroup } from "../interfaces/repairPatch.js";
 import { optimizeHtmlSystemPrompt } from "../prompts/optimize.js";
 import type { VisualRepairContext } from "../runtime/loop.js";
 import { sanitizers } from "../sanitizers/index.js";
@@ -21,6 +23,8 @@ export interface OptimizeHtmlOutput {
 
 function buildOptimizeInstruction(
   figmaDescription: string,
+  observeGroups: ObserveGroup[],
+  repairPlanGroups: { groups: RepairPlanGroup[] } | undefined,
   currentHtml: string,
   currentCss: string,
 ): string {
@@ -32,6 +36,12 @@ function buildOptimizeInstruction(
     "",
     "## Figma 渲染图描述",
     figmaDescription || "(empty)",
+    "",
+    "## Observe groups",
+    JSON.stringify(observeGroups, null, 2),
+    "",
+    "## Repair plan",
+    JSON.stringify(repairPlanGroups ?? { groups: [] }, null, 2),
     "",
     "## 当前 HTML",
     currentHtml,
@@ -53,6 +63,8 @@ export async function optimizeHtml(
   const instruction = new HumanMessage(
     buildOptimizeInstruction(
       input.context.observeFigmaDescription ?? "",
+      input.context.observeGroups ?? [],
+      input.context.repairPlanGroups,
       input.currentHtml,
       input.currentCss,
     )

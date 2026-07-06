@@ -4,6 +4,7 @@ export type {
   RunSourceAgentInput,
   RunSourceAgentResult,
   SourceAgentBudget,
+  SourceAgentContextCompression,
   SourceAgentEvidence,
   SourceAgentProgressEvent,
   SourceAgentToolTrace,

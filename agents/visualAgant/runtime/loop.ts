@@ -53,8 +53,6 @@ export async function runVisualRepairLoop(
           groups: context.observeGroups ?? [],
         }),
     );
-    context.observeFigmaDescription = undefined;
-    context.observeGroups = undefined;
     context.repairPlanGroups = planGroups;
 
     const repairPlanGroupsJson = JSON.stringify(
@@ -97,6 +95,8 @@ export async function runVisualRepairLoop(
   const { result } = await runWorkflow();
   context.currentHtml = result.html;
   context.currentCss = result.css;
+  context.observeFigmaDescription = undefined;
+  context.observeGroups = undefined;
   context.repairPlanGroups = undefined;
 
   return { html: context.currentHtml, css: context.currentCss };

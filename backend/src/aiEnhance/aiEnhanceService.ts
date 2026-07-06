@@ -25,7 +25,6 @@ import type { ConvertFigmaDto } from "../figma/dto/convertFigmaDto.ts";
 import { buildRenderableHtml } from "./utils/buildRenderableHtml.ts";
 
 const FIGMA_AI_LLM_TIMEOUT_MS = 1 * 60_000;
-const LOGGABLE_TAILWIND_FRAGMENT_MAX_LENGTH = 20_000;
 const FIGMA_AI_DEBUG_IMAGE_DIR = resolve(
   process.cwd(),
   ".debug",
@@ -72,18 +71,14 @@ export class AiEnhanceService {
       events.push(event);
       input.convertProgress.reportAgent(event);
       const status = String(event.details?.status ?? "");
-      const payload = {
+      if (status !== "error") return;
+      this.loggingService.error(`AI enhance agent ${event.event}`, {
         runId,
         module: "aiEnhance",
         source: "agent",
         agentEvent: event.event,
         details: event.details,
-      };
-      if (status === "error") {
-        this.loggingService.error(`AI enhance agent ${event.event}`, payload);
-        return;
-      }
-      this.loggingService.info(`AI enhance agent ${event.event}`, payload);
+      });
     };
 
     try {
@@ -100,14 +95,6 @@ export class AiEnhanceService {
         );
       }
       const aiOptions = input.dto.aiOptions;
-
-      this.loggingService.info("AI enhance started", {
-        runId,
-        module: "aiEnhance",
-        source: "backend",
-        model: aiOptions.model?.trim(),
-        nodeId: input.nodeRef.nodeId,
-      });
 
       const baselinePngBase64 = input.baselinePngBase64;
       const viewport = readPngSize(baselinePngBase64);
@@ -130,16 +117,10 @@ export class AiEnhanceService {
           renderedPngBase64: currentPngBase64,
         }),
       );
-      const debugImageDir = await this.writeDebugImages(runId, {
+      await this.writeDebugImages(runId, {
         baseline: baselinePngBase64,
         current: currentPngBase64,
         evidence: visualAttention.visualEvidencePngBase64,
-      });
-      this.loggingService.info("AI enhance debug images saved", {
-        runId,
-        module: "aiEnhance",
-        source: "backend",
-        debugImageDir,
       });
 
       const currentHtml = await this.prepareCurrentHtml(input, runId);
@@ -178,6 +159,7 @@ export class AiEnhanceService {
         module: "aiEnhance",
         source: "backend",
         durationMs: Date.now() - startedAt,
+        sourceInsightEnabled: true,
       });
       return {
         result,
@@ -221,17 +203,10 @@ export class AiEnhanceService {
           input.codegenResult.css,
         )
       ).trim();
-      this.loggingService.info("AI enhance tailwind conversion succeeded", {
-        runId,
-        module: "aiEnhance",
-        source: "backend",
-        currentHtmlLength: tailwindFragment.length,
-        tailwindFragment: this.toLoggableTailwindFragment(tailwindFragment),
-      });
       return tailwindFragment;
     } catch (error) {
-      this.loggingService.error(
-        "AI enhance tailwind conversion failed, fallback to raw html+css",
+      this.loggingService.warn(
+        "AI enhance tailwind conversion fell back to raw html+css",
         {
           runId,
           module: "aiEnhance",
@@ -260,13 +235,6 @@ export class AiEnhanceService {
         }
         try {
           const result = await task();
-          this.loggingService.info("AI enhance stage completed", {
-            runId,
-            module: "aiEnhance",
-            source: "backend",
-            stage: logStage,
-            durationMs: Date.now() - startedAt,
-          });
           return result;
         } catch (error) {
           this.loggingService.error("AI enhance stage failed", {
@@ -314,11 +282,5 @@ export class AiEnhanceService {
     ];
     await Promise.all(writes);
     return outputDir;
-  }
-
-  private toLoggableTailwindFragment(fragment: string): string {
-    if (fragment.length <= LOGGABLE_TAILWIND_FRAGMENT_MAX_LENGTH)
-      return fragment;
-    return `${fragment.slice(0, LOGGABLE_TAILWIND_FRAGMENT_MAX_LENGTH)}...[truncated]`;
   }
 }

@@ -37,12 +37,6 @@
 - 文件名优先和同目录既有风格保持一致；没有既定风格时，导出单个主符号的文件使用与主符号语义一致的驼峰变体。
 - 配置类、约定类文件名不强制使用驼峰命名，遵循生态或工具链的既定命名方式，例如 `vite-env.d.ts`、`tsconfig.json`、`eslint.config.js`。
 
-## Agent 工作流
+## 开发规范
 
-`agent/` 当前核心流程是 observe -> plan -> apply -> polish。
-
-- observe 只描述视觉差异，不写修复方案。
-- plan 把 observe groups 转为可执行 change。
-- apply 只执行 plan 中列出的 `dataId` 动作。
-- polish 做最终清理，不应引入新的大范围结构变化。
-- 修改 prompt/schema 时，要同步检查 `interfaces/`、`steps/`、`prompts/`、`sanitizers/`。
+- 当一个文件代码超过300行时，建议将其拆分成多个文件，每个文件负责一个功能模块。
