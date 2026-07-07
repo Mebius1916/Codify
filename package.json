@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter @codify/converters build && pnpm --filter @codify/agent build && pnpm --filter @codify/evolving-agent build && concurrently -n converters,agent,evolving,backend,frontend \"pnpm --filter @codify/converters dev\" \"pnpm --filter @codify/agent dev\" \"pnpm --filter @codify/evolving-agent dev\" \"pnpm --filter @codify/backend dev:watch\" \"pnpm --filter @codify/frontend dev\"",
-    "build": "pnpm --filter @codify/converters build && pnpm --filter @codify/agent build && pnpm --filter @codify/evolving-agent build && pnpm --filter @codify/backend build && pnpm --filter @codify/frontend build",
+    "dev": "pnpm --filter @codify/contracts build && pnpm --filter @codify/agent build && pnpm --filter @codify/evolving-agent build && concurrently -n contracts,agent,evolving,backend,frontend \"pnpm --filter @codify/contracts dev\" \"pnpm --filter @codify/agent dev\" \"pnpm --filter @codify/evolving-agent dev\" \"pnpm --filter @codify/backend dev:watch\" \"pnpm --filter @codify/frontend dev\"",
+    "build": "pnpm --filter @codify/contracts build && pnpm --filter @codify/agent build && pnpm --filter @codify/evolving-agent build && pnpm --filter @codify/backend build && pnpm --filter @codify/frontend build",
     "start": "concurrently -n backend,frontend \"pnpm --filter @codify/backend start\" \"pnpm --filter @codify/frontend start\"",
     "source:sync": "pnpm --filter @codify/backend source:sync",
     "lint": "pnpm --filter @codify/frontend lint",

@@ -33,6 +33,7 @@ function buildOptimizeInstruction(
     "",
     "===== 本步任务 =====",
     "请在不改变视觉结果与语义内容的前提下优化代码结构，输出最终 html + css。",
+    "注意：当前 HTML 是为压缩上下文而生成的内联 style 中间态；最终输出必须回到可维护的 html + css 结构。",
     "",
     "## Figma 渲染图描述",
     figmaDescription || "(empty)",

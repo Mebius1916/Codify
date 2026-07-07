@@ -34,6 +34,7 @@ function buildApplyInstruction(
     "",
     "===== 本步任务 =====",
     "请根据结构化修复计划，输出局部 HTML patches。程序会根据 id 完成替换。",
+    "注意：参考代码里的内联 style 来自后端的上下文压缩，仅作为当前状态线索；不要把新增内联 style 当作常规修复手段。",
     "",
     "## Figma 渲染图描述",
     figmaDescription || "(empty)",

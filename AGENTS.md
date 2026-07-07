@@ -8,7 +8,7 @@
 - `backend/`：Nest 后端，负责 Figma API、HTML 渲染、AI enhance 调用、日志。
 - `design2code/`：Figma 数据解析与 HTML/CSS 生成，属于代码生成核心。
 - `agent/`：视觉修复 agent，负责 observe -> plan -> apply -> polish 工作流。
-- `converters/`：HTML/CSS 到 Tailwind 等转换工具。
+- `contracts/`：跨包/跨进程共享的类型契约。
 
 修改跨模块链路时，优先保持模块边界清晰，避免职责重叠混淆。
 

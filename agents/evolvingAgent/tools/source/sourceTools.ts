@@ -1,8 +1,8 @@
 import type { StructuredToolInterface } from "@langchain/core/tools";
-import { INSTRUMENTATION_STRATEGY_IDS } from "@codify/converters";
 import { z } from "zod";
 
 import { buildCodeGraphContext, inspectCodeGraphNode } from "./codeGraphTools.js";
+import { INSTRUMENTATION_STRATEGY_IDS } from "./instrumentationStrategyIds.js";
 import { createReadFileRangeTool } from "./readFileRangeTool.js";
 import {
   createJsonTool,

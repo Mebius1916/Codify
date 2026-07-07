@@ -3,9 +3,9 @@ import { NestFactory } from '@nestjs/core'
 import { toNodeHandler } from 'better-auth/node'
 import { json } from 'express'
 import { AppModule } from './appModule.ts'
-import { auth } from './auth/auth.ts'
-import { runAuthMigrations } from './auth/authMigrations.ts'
-import { env } from './config/env.ts'
+import { auth } from './platform/auth/auth.ts'
+import { runAuthMigrations } from './platform/auth/authMigrations.ts'
+import { env } from './platform/config/env.ts'
 
 async function bootstrap() {
   await runAuthMigrations()

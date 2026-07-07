@@ -1,3 +1,5 @@
+export type { ConvertStage, ConvertStageEvent } from '@codify/contracts'
+
 export interface FigmaCodegenResult {
   html: string
   body: string
@@ -21,20 +23,4 @@ export interface FigmaConvertResult {
       details?: Record<string, unknown>
     }>
   }
-}
-
-export type ConvertStage =
-  | 'figma_fetch'
-  | 'codegen'
-  | 'render_baseline'
-  | 'render_current'
-  | 'observe'
-  | 'plan'
-  | 'rewrite'
-  | 'completed'
-  | 'failed'
-
-export interface ConvertStageEvent {
-  stage: ConvertStage
-  label: string
 }

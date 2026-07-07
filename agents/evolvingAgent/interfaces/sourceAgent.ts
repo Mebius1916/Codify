@@ -1,8 +1,9 @@
 import type {
   InstrumentationSearchGroup,
   InstrumentationStrategyPointDirectory,
-  SourceRepositoryState,
-} from "@codify/converters";
+} from "@codify/contracts";
+
+import type { SourceRepositoryState } from "../sourceRepository/index.js";
 
 export type InstrumentationReadOptions = {
   query?: string;

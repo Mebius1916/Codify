@@ -1,7 +1,6 @@
 import figmaIconUrl from "@assets/Figma.svg";
 import reactIconUrl from "@assets/React.svg";
 import vueIconUrl from "@assets/Vue.svg";
-import tailwindIconUrl from "@assets/Tailwind.svg";
 import htmlIconUrl from "@assets/Html.svg";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
@@ -169,13 +168,13 @@ export function HomePage() {
 
             <div className="mt-10 flex flex-col items-center gap-4">
               <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-                Supported Frameworks
+                Supported Targets
               </div>
               <div className="flex items-center gap-8 text-xs text-slate-500">
                 {[
                   { label: "React", icon: reactIconUrl },
                   { label: "Vue", icon: vueIconUrl },
-                  { label: "Tailwind", icon: tailwindIconUrl },
+                  { label: "Inline Style", icon: htmlIconUrl },
                   { label: "HTML", icon: htmlIconUrl },
                 ].map((item) => (
                   <div key={item.label} className="flex flex-col items-center gap-2">

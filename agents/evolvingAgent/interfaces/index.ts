@@ -9,4 +9,11 @@ export type {
   SourceAgentProgressEvent,
   SourceAgentToolTrace,
 } from "./sourceAgent.js";
-export type { SourceRepositoryState } from "@codify/converters";
+export { LocalSourceRepository } from "../sourceRepository/index.js";
+export type {
+  LocalSourceFileInput,
+  LocalSourceFileRecord,
+  LocalSourceReadRange,
+  OverwriteSourceFilesInput,
+  SourceRepositoryState,
+} from "../sourceRepository/index.js";

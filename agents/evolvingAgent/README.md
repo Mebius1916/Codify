@@ -21,6 +21,7 @@ index.ts                  对外导出入口
 runtime/                  LangGraph Agent、CodeGraph、repo profile、系统提示
 tools/                    只读源码检索工具
 interfaces/               对外类型契约
+sourceRepository/         本地源码仓库快照读写
 llm/                      模型创建
 utils/                    小型通用工具
 ```
@@ -81,7 +82,7 @@ agent 运行 -> 只接受 indexStatus=ready 且 sourceVersion=indexVersion
 
 ```ts
 import { readFile } from "node:fs/promises";
-import { LocalSourceRepository } from "@codify/converters";
+import { LocalSourceRepository } from "@codify/evolving-agent";
 
 const sourceRepository = LocalSourceRepository.inRepo(process.cwd());
 const repoId = "codeFlow";

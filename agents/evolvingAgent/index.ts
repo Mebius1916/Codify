@@ -16,6 +16,15 @@ import { assertReadySourceState } from "./runtime/bootstrap/sourceStateAssert.js
 import { createSourceTools } from "./tools/source/sourceTools.js";
 import { extractMessageText } from "./utils/text.js";
 
+export { LocalSourceRepository } from "./sourceRepository/index.js";
+export type {
+  LocalSourceFileInput,
+  LocalSourceFileRecord,
+  LocalSourceReadRange,
+  OverwriteSourceFilesInput,
+  SourceRepositoryState,
+} from "./sourceRepository/index.js";
+
 const DEFAULT_MAX_TOOL_CALLS = 18; // 最多调用次数
 
 export async function runEvolvingAgent(

@@ -3,5 +3,5 @@ packages:
   - 'frontend'
   - 'design2code'
   - 'agents/*'
-  - 'converters'
+  - 'contracts'
 dangerouslyAllowAllBuilds: true
