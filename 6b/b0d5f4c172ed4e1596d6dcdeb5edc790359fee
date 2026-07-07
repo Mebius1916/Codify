@@ -1,0 +1,69 @@
+backend/src/platform/config/env.ts
+  s_fc70bfe959de2e::t_bb4800cc8a13f6 4 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a4ca8c5e06ba7d87fed61b0","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Single":4}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "6bb0d5f4c172ed4e1596d6dcdeb5edc790359fee",
+  "prompts": {},
+  "humans": {
+    "h_b23a6a8439c0dd": {
+      "author": "unknown"
+    },
+    "h_cd1247dcc95fed": {
+      "author": "liaoshihan <liaoshihan176@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_fc70bfe959de2e": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a4c73dde06ba7d87fed5b0e",
+        "model": "gpt-5.4__dev",
+        "display_model_name": "GPT-5.4"
+      },
+      "human_author": "liaoshihan <liaoshihan176@gmail.com>"
+    }
+  },
+  "attestation_metadata": {
+    "backend/src/platform/config/env.ts": [
+      {
+        "hash": "s_fc70bfe959de2e::t_bb4800cc8a13f6",
+        "line_ranges": [
+          {
+            "Single": 4
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a4ca8c5e06ba7d87fed61b0",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Single": 4
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_fc70bfe959de2e": {
+      "tool": "trae",
+      "conversation_id": "6a4c73dde06ba7d87fed5b0e",
+      "session_id": "6a4c73dde06ba7d87fed5b0e",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_fc70bfe959de2e::t_bb4800cc8a13f6": {
+      "tool": "trae",
+      "conversation_id": "6a4c73dde06ba7d87fed5b0e",
+      "session_id": "6a4c73dde06ba7d87fed5b0e",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
